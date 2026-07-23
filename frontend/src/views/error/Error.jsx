@@ -5,7 +5,7 @@ function Error() {
     const navigate = useNavigate();
 
     const handleTakeMeBack = () => {
-        navigate(`/views/dashboard`);
+        navigate(`/views/landing`);
     };
     return (
         <div className="w-full h-screen bg-gray-100 flex flex-col items-center justify-center gap-10">

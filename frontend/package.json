@@ -30,12 +30,6 @@
     "test": "vitest",
     "test:ui": "vitest --ui"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -58,6 +52,6 @@
     "jsdom": "^24.0.0",
     "user-event": "^4.0.0",
     "vite": "^7.1.5",
-    "vitest": "^4.0.9"
+    "vitest": "^4.1.10"
   }
 }

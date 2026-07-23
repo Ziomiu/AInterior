@@ -9,7 +9,7 @@ export default function Logout() {
 
   useEffect(() => {
     dispatch(logout());
-    navigate("/views/account/login");
+    navigate("/views/landing");
   }, [dispatch, navigate]);
 
   return (

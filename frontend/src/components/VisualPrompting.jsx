@@ -287,11 +287,11 @@ const VisualPrompting = ({ positivePromptSetter, negativePromptSetter }) => {
                 <div key={id} className="relative group">
                     <button
                         onClick={() => selectSingle(setter, id, activeId)}
-                        className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors duration-200 text-xl ${activeId === id ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-800"}`}
+                        className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors duration-200 text-xl ${activeId === id ? "bg-primary text-primary-foreground" : "bg-foreground/10 text-foreground/80"}`}
                     >
                         <Icon />
                     </button>
-                    <div className="absolute left-full transform -translate-y-1/2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-20 whitespace-nowrap">
+                    <div className="absolute left-full transform -translate-y-1/2 hidden group-hover:block bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-20 whitespace-nowrap">
                         {prompt}
                     </div>
                 </div>
@@ -305,11 +305,11 @@ const VisualPrompting = ({ positivePromptSetter, negativePromptSetter }) => {
                 <div key={id} className="relative group">
                     <button
                         onClick={() => toggle(id)}
-                        className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors duration-200 text-xl ${state[id] ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-800"}`}
+                        className={`w-12 h-12 flex items-center justify-center rounded-full transition-colors duration-200 text-xl ${state[id] ? "bg-primary text-primary-foreground" : "bg-foreground/10 text-foreground/80"}`}
                     >
                         <Icon />
                     </button>
-                    <div className="absolute left-full transform -translate-y-1/2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap">
+                    <div className="absolute left-full transform -translate-y-1/2 hidden group-hover:block bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg z-10 whitespace-nowrap">
                         {prompt}
                     </div>
                 </div>
@@ -321,10 +321,10 @@ const VisualPrompting = ({ positivePromptSetter, negativePromptSetter }) => {
         <div className="mb-4">
             <div
                 onClick={() => toggleExpanded(sectionKey)}
-                className="flex items-center justify-between cursor-pointer select-none pb-1 border-b border-gray-300"
+                className="flex items-center justify-between cursor-pointer select-none pb-1 border-b border-foreground/15"
             >
                 <TextTooltip text={title} tooltip={tooltip} />
-                <span className="text-gray-500">{expanded[sectionKey] ? "▲" : "▼"}</span>
+                <span className="text-muted">{expanded[sectionKey] ? "▲" : "▼"}</span>
             </div>
             {expanded[sectionKey] && <div className="mt-2">{content}</div>}
         </div>

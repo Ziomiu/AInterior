@@ -3,6 +3,7 @@
 
 @theme {
   --color-background: #eae5da;
+  --color-surface: #faf9f6;
 
   --color-foreground: #27221f;
 
@@ -20,7 +21,8 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground font-sans;
+    /* Warm near-white, distinct from the opaque cream nav/footer bars. */
+    @apply bg-surface text-foreground font-sans;
   }
 
   h1,

@@ -13,9 +13,9 @@ export default function Logout() {
   }, [dispatch, navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
-      <h1 className="text-4xl text-gray-700 mb-4">Logging out...</h1>
-      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-gray-500 border-solid"></div>
+    <div className="min-h-screen flex flex-col items-center justify-center">
+      <h1 className="text-4xl text-muted mb-4">Logging out...</h1>
+      <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-accent border-solid"></div>
     </div>
   );
 }

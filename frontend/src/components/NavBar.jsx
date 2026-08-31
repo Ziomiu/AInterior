@@ -21,7 +21,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-background text-foreground px-5 py-3">
+    <nav className="bg-background text-foreground px-5 py-3 border-b border-foreground/10 shadow-sm">
       <div className="flex items-center justify-between gap-8">
         <RouterLink to="/views/landing" className="flex-shrink-0">
           <Logo />

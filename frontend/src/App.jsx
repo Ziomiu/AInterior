@@ -10,6 +10,7 @@ import Footer from "./components/Footer";
 import PrivateRoute from "./components/PrivateRoute";
 import AuthModal from "./components/AuthModal";
 import { AuthModalProvider, authModalController } from "./context/AuthModalContext";
+import { logout } from "./features/auth/authSlice";
 // import { ColorModeProvider } from "./components/ui/color-mode"
 
 import LandingPage from "./views/landing/LandingPage";
@@ -35,6 +36,7 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      store.dispatch(logout());
       authModalController.openLogin();
     }
     return Promise.reject(error);
@@ -48,7 +50,7 @@ const App = () => (
       <AuthModalProvider>
         <div className="min-h-screen flex flex-col">
           <Navbar />
-          <Toaster />
+          <Toaster position="top-right" containerStyle={{ top: 88 }} />
           <AuthModal />
           <main className="flex-1 flex flex-col">
             <Routes>

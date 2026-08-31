@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
+import Button from "../../components/ui/Button";
+
 export default function UserDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -49,22 +51,19 @@ export default function UserDetails() {
     }
   };
 
-  if (loading) return <p>Loading user details...</p>;
-  if (!userData) return <p>User not found</p>;
+  if (loading) return <p className="text-muted">Loading user details...</p>;
+  if (!userData) return <p className="text-muted">User not found</p>;
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-4 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-      >
+    <div className="p-6 min-h-screen">
+      <Button variant="outline" className="mb-4 normal-case tracking-normal" onClick={() => navigate(-1)}>
         ← Back to Users
-      </button>
+      </Button>
 
       <h1 className="text-3xl font-bold mb-2">
         {userData.first_name} {userData.last_name}
       </h1>
-      <p className="text-gray-700 mb-4">{userData.email}</p>
+      <p className="text-muted mb-4">{userData.email}</p>
 
       <h2 className="text-xl font-semibold mt-6 mb-2">Gallery</h2>
       {userData.gallery?.length ? (
@@ -72,7 +71,7 @@ export default function UserDetails() {
           {userData.gallery.map((img) => (
             <div
               key={img.id}
-              className="relative border rounded-lg overflow-hidden bg-white shadow-md"
+              className="relative border border-foreground/10 rounded-lg overflow-hidden bg-white shadow-sm"
             >
               {img.image_base64 ? (
                 <img
@@ -81,29 +80,28 @@ export default function UserDetails() {
                   className="w-full h-48 object-cover"
                 />
               ) : (
-                <div className="h-48 bg-gray-200 flex items-center justify-center text-gray-500">
+                <div className="h-48 bg-foreground/5 flex items-center justify-center text-muted">
                   No preview
                 </div>
               )}
 
-              {/* Przyciski akcji */}
               <button
                 onClick={() => handleDeleteImage(img.id)}
-                className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-md hover:bg-red-600 text-sm"
+                className="absolute top-2 right-2 bg-[#f3e3df] hover:bg-[#ecd5cf] text-[#7a3b2e] px-2 py-1 rounded-md text-sm transition-colors cursor-pointer"
               >
                 🗑 Delete
               </button>
 
-              <div className="p-2 text-sm text-gray-700">
-                <p><strong>Model:</strong> {img.model}</p>
-                <p><strong>Prompt:</strong> {img.prompt}</p>
-                <p><strong>Date:</strong> {img.created_at}</p>
+              <div className="p-2 text-sm text-muted">
+                <p><strong className="text-foreground">Model:</strong> {img.model}</p>
+                <p><strong className="text-foreground">Prompt:</strong> {img.prompt}</p>
+                <p><strong className="text-foreground">Date:</strong> {img.created_at}</p>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <p>No images in gallery.</p>
+        <p className="text-muted">No images in gallery.</p>
       )}
 
       <h2 className="text-xl font-semibold mt-6 mb-2">Prompts</h2>
@@ -114,7 +112,7 @@ export default function UserDetails() {
           ))}
         </ul>
       ) : (
-        <p>No prompts found.</p>
+        <p className="text-muted">No prompts found.</p>
       )}
     </div>
   );

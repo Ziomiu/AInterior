@@ -4,6 +4,8 @@ import { useDispatch } from "react-redux";
 
 import { useAuthModal } from "../context/AuthModalContext";
 import { toaster } from "./ui/toaster";
+import Button from "./ui/Button";
+import Input from "./ui/Input";
 import { loginSuccess } from "../features/auth/authSlice";
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -167,24 +169,22 @@ export default function AuthModal() {
                 <label htmlFor="first_name" className="block text-sm text-foreground mb-1.5">
                   First Name
                 </label>
-                <input
+                <Input
                   id="first_name"
                   name="first_name"
                   value={form.first_name}
                   onChange={handleChange}
-                  className="w-full rounded-md border border-foreground/15 bg-transparent px-4 py-2.5 text-sm text-foreground/85 placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent"
                 />
               </div>
               <div>
                 <label htmlFor="last_name" className="block text-sm text-foreground mb-1.5">
                   Last Name
                 </label>
-                <input
+                <Input
                   id="last_name"
                   name="last_name"
                   value={form.last_name}
                   onChange={handleChange}
-                  className="w-full rounded-md border border-foreground/15 bg-transparent px-4 py-2.5 text-sm text-foreground/85 placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent"
                 />
               </div>
             </div>
@@ -194,13 +194,12 @@ export default function AuthModal() {
             <label htmlFor="email" className="block text-sm text-foreground mb-1.5">
               Email
             </label>
-            <input
+            <Input
               id="email"
               name="email"
               type="email"
               value={form.email}
               onChange={handleChange}
-              className="w-full rounded-md border border-foreground/15 bg-transparent px-4 py-2.5 text-sm text-foreground/85 placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
 
@@ -208,23 +207,23 @@ export default function AuthModal() {
             <label htmlFor="password" className="block text-sm text-foreground mb-1.5">
               Password
             </label>
-            <input
+            <Input
               id="password"
               name="password"
               type="password"
               value={form.password}
               onChange={handleChange}
-              className="w-full rounded-md border border-foreground/15 bg-transparent px-4 py-2.5 text-sm text-foreground/85 placeholder:text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
 
-          <button
+          <Button
             type="submit"
+            variant="accent"
             disabled={loading}
-            className="mt-2 rounded-md bg-accent text-white py-3 font-medium tracking-wide hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+            className="mt-2 w-full normal-case tracking-normal text-sm py-3"
           >
             {loading ? (isLogin ? "Logging in..." : "Signing up...") : isLogin ? "Login" : "Sign Up"}
-          </button>
+          </Button>
         </form>
 
         <p className="text-sm text-center text-muted mt-6">

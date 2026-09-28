@@ -3,6 +3,8 @@ import { useState} from "react";
 
 import TextTooltip from "./TextTooltip";
 import VisualPrompting from "./VisualPrompting";
+import Toggle from "./ui/Toggle";
+import Input from "./ui/Input";
 
 const Prompts = ({positivePrompt, setPositivePrompt, negativePrompt, setNegativePrompt}) => {
 
@@ -16,29 +18,22 @@ const Prompts = ({positivePrompt, setPositivePrompt, negativePrompt, setNegative
                 text="Visual prompting"
                 tooltip="Enable or disable visual prompting."
               />
-            <div
-              onClick={() => {
-                const newValue = !isVisualPromptingOn;
-
+            <Toggle
+              checked={isVisualPromptingOn}
+              onChange={(newValue) => {
                 if (newValue) {
                   const proceed = window.confirm(
                     `You are about to turn on Visual Prompting mode. Your positive and negative prompts will be erased! Continue?`
                   );
                   if (proceed) setIsVisualPromptingOn(newValue);
-                }else{
+                } else {
                   const proceed = window.confirm(
                     `You are about to turn off Visual Prompting Mode. Your choices will be translated into textual positive and negative prompts. Continue?`
                   );
                   if (proceed) setIsVisualPromptingOn(newValue);
                 }
-
               }}
-              className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${isVisualPromptingOn ? "bg-green-500" : "bg-gray-400"}`}
-            >
-              <div
-                className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200 ${isVisualPromptingOn ? "translate-x-6" : "translate-x-0"}`}
-              ></div>
-            </div>
+            />
           </div>
           {isVisualPromptingOn ? (
 
@@ -54,22 +49,20 @@ const Prompts = ({positivePrompt, setPositivePrompt, negativePrompt, setNegative
                 text="Positive prompt"
                 tooltip="Provide a natural-language description of what the image should contain."
               />
-              <input
+              <Input
                 value={positivePrompt}
                 onChange={(e) => setPositivePrompt(e.target.value)}
                 placeholder="Enter prompt"
-                className="w-full p-2 border rounded"
               />
 
               <TextTooltip
                 text="Negative prompt"
                 tooltip="Provide a natural-language description of what the image should not contain."
               />
-              <input
+              <Input
                 value={negativePrompt}
                 onChange={(e) => setNegativePrompt(e.target.value)}
                 placeholder="Enter negative prompt (optional)"
-                className="w-full p-2 border rounded"
               />
             </>
           )}

@@ -1,23 +1,22 @@
 import { useNavigate } from "react-router-dom";
 
+import Button from "../../components/ui/Button";
+
 function Error() {
 
     const navigate = useNavigate();
 
     const handleTakeMeBack = () => {
-        navigate(`/views/dashboard`);
+        navigate(`/views/landing`);
     };
     return (
-        <div className="w-full h-screen bg-gray-100 flex flex-col items-center justify-center gap-10">
+        <div className="w-full h-screen flex flex-col items-center justify-center gap-10">
             <h1 className="text-6xl font-bold text-center m-0">
                 Page not found!
             </h1>
-            <button
-                className="bg-yellow-400 hover:bg-yellow-400 px-5 py-3 rounded-lg"
-                onClick={handleTakeMeBack}
-            >
+            <Button size="lg" onClick={handleTakeMeBack}>
                 Take me back!
-            </button>
+            </Button>
         </div>
     );
 }

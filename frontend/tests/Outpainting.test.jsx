@@ -50,7 +50,7 @@ describe('Outpainting', () => {
         const pad_right = screen.getByText(/Pad right/i);
         const pad_top = screen.getByText(/Pad top/i);
         const pad_bottom = screen.getByText(/Pad bottom/i);
-        const seed = screen.getByText(/Seed/i);
+        const seed = screen.getByText(/^Seed$/i);
         const scaling_mode = screen.getByText(/Choose image scaling mode/i);
         const model = screen.getByText(/Choose model/i);
 
@@ -65,7 +65,7 @@ describe('Outpainting', () => {
     });
 
     it('should start image generation and display image', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => {
                 if (key === 'token') return 'example-token';
                 return null;
@@ -89,7 +89,7 @@ describe('Outpainting', () => {
     });
 
     it('should not start image generation, anonymous user', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => null);
 
         renderAll(<Outpainting />);
@@ -112,7 +112,7 @@ describe('Outpainting', () => {
     });
 
     it('should start image generation and not display image, backend error', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => {
                 if (key === 'token') return 'example-token';
                 return null;

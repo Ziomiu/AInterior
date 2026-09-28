@@ -2,7 +2,7 @@ import UsersList from "./UsersList";
 
 export default function AdminPanel() {
   return (
-    <div className="p-8 bg-gray-100 min-h-screen text-gray-800">
+    <div className="p-8 min-h-screen">
       <h1 className="text-3xl font-bold mb-6 text-center">Admin Panel</h1>
 
       <div className="mb-10">

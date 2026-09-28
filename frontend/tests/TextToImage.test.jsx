@@ -44,7 +44,7 @@ describe('TextToImage', () => {
         await userEvent.click(toggleButton);
 
         const guidance_scale = screen.getByText(/Guidance scale/i);
-        const seed = screen.getByText(/Seed/i);
+        const seed = screen.getByText(/^Seed$/i);
         const model = screen.getByText(/Choose model/i);
 
         expect(guidance_scale).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('TextToImage', () => {
     });
 
     it('should start image generation and display image', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => key === 'token' ? 'example-token' : null);
 
         renderAll(<TextToImage />);
@@ -70,7 +70,7 @@ describe('TextToImage', () => {
     });
 
     it('should not start image generation, anonymous user', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation(() => null);
 
         renderAll(<TextToImage />);
@@ -89,7 +89,7 @@ describe('TextToImage', () => {
     });
 
     it('should start image generation and not display image, backend error', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => key === 'token' ? 'example-token' : null);
 
         renderAll(<TextToImage />);

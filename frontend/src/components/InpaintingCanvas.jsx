@@ -256,14 +256,14 @@ const InpaintingCanvas = forwardRef(
         <div className="flex gap-4 flex-wrap justify-center flex-shrink-0">
           <button
             onClick={() => setMaskEditorOpenRef(false)}
-            className="bg-yellow-500 text-white rounded hover:bg-yellow-600 transition px-4 py-2"
+            className="bg-accent text-accent-foreground rounded hover:opacity-90 transition px-4 py-2 cursor-pointer"
           >
             Save mask
           </button>
 
           <button
             onClick={clearMask}
-            className="bg-red-500 text-white rounded hover:bg-red-600 transition px-4 py-2"
+            className="bg-[#7a3b2e] text-white rounded hover:opacity-90 transition px-4 py-2 cursor-pointer"
           >
             Delete mask
           </button>

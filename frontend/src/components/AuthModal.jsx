@@ -126,22 +126,6 @@ export default function AuthModal() {
     }
   };
 
-  const handleDevBypass = () => {
-    const payload = btoa(JSON.stringify({ sub: "dev-user", exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 }));
-    const token = `dev.${payload}.bypass`;
-
-    localStorage.setItem("token", token);
-    dispatch(
-      loginSuccess({
-        user: { first_name: "Dev", last_name: "User", email: "dev@local.test", role: "user" },
-        token,
-      })
-    );
-
-    toaster.create({ title: "Signed in (dev bypass, no backend)", status: "success" });
-    close();
-  };
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm px-4"
@@ -243,16 +227,6 @@ export default function AuthModal() {
             </>
           )}
         </p>
-
-        {import.meta.env.DEV && (
-          <button
-            type="button"
-            onClick={handleDevBypass}
-            className="block w-full text-center text-xs text-muted/70 hover:text-muted mt-3 cursor-pointer"
-          >
-            Skip login (dev only, no backend)
-          </button>
-        )}
       </div>
     </div>
   );

@@ -118,7 +118,7 @@ describe('AuthModal - login', () => {
   it('rejects submission with an invalid email', async () => {
     const user = await renderModal('login');
 
-    await user.type(screen.getByLabelText('Email'), 'john.doe%example.com');
+    await user.type(screen.getByLabelText('Email'), 'john.doe@example');
     await user.type(screen.getByLabelText('Password'), 'johndoe123');
     await user.click(screen.getByRole('button', { name: 'Login' }));
 

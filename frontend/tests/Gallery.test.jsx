@@ -4,7 +4,6 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { it, expect, describe, vi, afterEach } from 'vitest';
 
 import axios from 'axios'
-import React from 'react';
 import { store } from '../src/store';
 import { Provider } from "react-redux";
 import { MemoryRouter } from 'react-router-dom';
@@ -44,7 +43,7 @@ describe('Gallery', () => {
         await screen.findByText("Your Gallery"); //wait for call
 
         expect(axios.get).toHaveBeenCalledWith(
-            `/api/gallery`,
+            `/api/gallery/`,
             {
                 headers: {
                     Authorization: `Bearer null`,

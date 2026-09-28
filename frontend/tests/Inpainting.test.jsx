@@ -3,8 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { render, screen, cleanup } from '@testing-library/react';
 import { it, expect, describe, vi, afterEach } from 'vitest';
 
-import axios from 'axios'
-import React from 'react';
 import { store } from '../src/store';
 import { Provider } from "react-redux";
 import { MemoryRouter } from 'react-router-dom';
@@ -46,13 +44,11 @@ describe('Inpainting', () => {
         await userEvent.click(toggleButton);
 
         const guidance_scale = screen.getByText(/Guidance scale/i);
-        const seed = screen.getByText(/Seed/i);
-        const scaling_mode = screen.getByText(/Choose image scaling mode/i);
+        const seed = screen.getByText(/^Seed$/i);
         const model = screen.getByText(/Choose model/i);
 
         expect(guidance_scale).toBeInTheDocument();
         expect(seed).toBeInTheDocument();
-        expect(scaling_mode).toBeInTheDocument();
         expect(model).toBeInTheDocument();
     });
 

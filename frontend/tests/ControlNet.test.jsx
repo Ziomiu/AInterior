@@ -4,7 +4,6 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { it, expect, describe, vi, afterEach } from 'vitest';
 
 import axios from 'axios'
-import React from 'react';
 import { store } from '../src/store';
 import { Provider } from "react-redux";
 import { MemoryRouter } from 'react-router-dom';
@@ -50,7 +49,7 @@ describe('ControlNet', () => {
         const guidance_scale = screen.getByText(/Guidance scale/i);
         const canny_low_threshold = screen.getByText(/Canny low threshold/i);
         const canny_high_threshold = screen.getByText(/Canny high threshold/i);
-        const seed = screen.getByText(/Seed/i);
+        const seed = screen.getByText(/^Seed$/i);
         const scaling_mode = screen.getByText(/Choose image scaling mode/i);
         const model = screen.getByText(/Choose model/i);
 
@@ -64,7 +63,7 @@ describe('ControlNet', () => {
     });
 
     it('should start image generation and display image', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => {
                 if (key === 'token') return 'example-token';
                 return null;
@@ -88,7 +87,7 @@ describe('ControlNet', () => {
     });
 
     it('should not start image generation, anonymous user', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => {
                 if (key === 'token') return null;
                 return null;
@@ -116,7 +115,7 @@ describe('ControlNet', () => {
     });
 
     it('should start image generation and not display image, backend error', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => {
                 if (key === 'token') return 'example-token';
                 return null;

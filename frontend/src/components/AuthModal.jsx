@@ -91,12 +91,13 @@ export default function AuthModal() {
       } else {
         await axios.post("/api/auth/register", { first_name, last_name, email, password, role: "user" });
         const loginRes = await axios.post("/api/auth/login", { email, password });
+        const { access_token, first_name: registeredFirstName, last_name: registeredLastName, email: registeredEmail, role } = loginRes.data;
 
-        localStorage.setItem("token", loginRes.data.access_token);
+        localStorage.setItem("token", access_token);
         dispatch(
           loginSuccess({
-            user: { first_name, last_name, email },
-            token: loginRes.data.access_token,
+            user: { first_name: registeredFirstName, last_name: registeredLastName, email: registeredEmail, role },
+            token: access_token,
           })
         );
 

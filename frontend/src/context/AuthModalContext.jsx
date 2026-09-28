@@ -1,9 +1,9 @@
-import { createContext, useContext, useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useCallback, useLayoutEffect, useMemo, useState } from "react";
 
 const AuthModalContext = createContext(null);
 
 // Lets code outside the React tree (the axios 401 interceptor) trigger the modal.
-export const authModalController = { openLogin: () => {}, openRegister: () => {} };
+export const authModalController = { openLogin: () => {}, openRegister: () => {}, isOpen: false };
 
 export function AuthModalProvider({ children }) {
   const [mode, setMode] = useState(null);
@@ -12,10 +12,14 @@ export function AuthModalProvider({ children }) {
   const openRegister = useCallback(() => setMode("register"), []);
   const close = useCallback(() => setMode(null), []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     authModalController.openLogin = openLogin;
     authModalController.openRegister = openRegister;
   }, [openLogin, openRegister]);
+
+  useLayoutEffect(() => {
+    authModalController.isOpen = mode !== null;
+  }, [mode]);
 
   const value = useMemo(
     () => ({ mode, isOpen: mode !== null, openLogin, openRegister, close }),

@@ -1,0 +1,37 @@
+# Standalone during development. To integrate with the main AInterior stack,
+# add these two services into its docker-compose.yml on the same network — this
+# file doesn't assume it owns the compose setup (see README §Integration).
+
+services:
+  furniture-replace:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/srv/data          # model weights + results + catalog images persist here
+      - ./frontend:/srv/frontend  # edit the console without rebuilding
+    environment:
+      - DEVICE=cuda
+      - QDRANT_URL=http://qdrant:6333
+      # - SERVICE_API_KEY=change-me
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.1
+    ports:
+      - "6333:6333"   # REST/dashboard — helpful during development
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:

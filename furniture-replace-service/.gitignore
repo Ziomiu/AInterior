@@ -1,0 +1,9 @@
+# Data (weights, results, catalog images) — never commit.
+data/
+*.pyc
+__pycache__/
+.env
+.venv/
+venv/
+*.egg-info/
+.DS_Store

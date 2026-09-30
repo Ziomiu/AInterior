@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { toaster } from "../../components/ui/toaster"
+import Card from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
 
 
 const Gallery = () => {
@@ -12,11 +14,13 @@ const Gallery = () => {
   const [pageSize, setPageSize] = useState(16);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const navigate = useNavigate();
 
   const fetchGallery = async () => {
     const token = localStorage.getItem("token");
     setLoading(true);
+    setError(false);
 
     try {
       const res = await axios.get(`/api/gallery/`, {
@@ -34,6 +38,7 @@ const Gallery = () => {
       setPageSize(res.data.page_size);
       setTotalPages(res.data.total_pages);
     } catch {
+      setError(true);
       toaster.create({
         title: "Error",
         description: "Unable to load gallery.",
@@ -94,20 +99,33 @@ const Gallery = () => {
 
   return (
 
-    <div className="w-full min-h-screen bg-gray-100 flex flex-col p-5 gap-5">
+    <div className="w-full min-h-screen flex flex-col p-5 gap-5">
       <h1 className="font-bold text-3xl">Your Gallery</h1>
       <div className="flex flex-wrap justify-center gap-5">
-        {(!gallery || gallery.length == 0) ? (
-          <div className="w-full h-screen bg-gray-100 flex flex-col items-center justify-center gap-10">
-            <h1 className="text-3xl font-bold text-center m-0">
+        {loading ? (
+          <div className="w-full h-[50vh] flex flex-col items-center justify-center gap-4">
+            <h1 className="text-2xl font-bold text-center m-0 text-muted">
               Loading gallery...
+            </h1>
+          </div>
+        ) : error ? (
+          <div className="w-full h-[50vh] flex flex-col items-center justify-center gap-4">
+            <h1 className="text-2xl font-bold text-center m-0">
+              Couldn't load your gallery
+            </h1>
+            <Button variant="outline" onClick={fetchGallery}>Try again</Button>
+          </div>
+        ) : (!gallery || gallery.length === 0) ? (
+          <div className="w-full h-[50vh] flex flex-col items-center justify-center gap-4">
+            <h1 className="text-2xl font-bold text-center m-0 text-muted">
+              No images yet
             </h1>
           </div>
         ) : (
           gallery.map((img) => (
-            <div
+            <Card
               key={img.id}
-              className="w-[300px] bg-white rounded-md shadow-md p-3 flex flex-col justify-between"
+              className="w-[300px] p-3 flex flex-col justify-between"
             >
               <img
                 src={`data:image/png;base64,${img.image_base64}`}
@@ -132,8 +150,6 @@ const Gallery = () => {
                   </>
                 )}
 
-                {console.log(img)}
-
                 {img.mode == "outpainting" && (
                   <>
                     <p><b>Pad left:</b> {img.pad_left}</p>
@@ -147,61 +163,61 @@ const Gallery = () => {
               </div>
               <div className="flex flex-col mt-3 space-y-2">
                 <button
-                  className="bg-blue-500 text-xs text-white rounded p-1"
+                  className="bg-foreground/5 hover:bg-foreground/10 text-xs text-foreground rounded p-1.5 transition-colors cursor-pointer"
                   onClick={() => handleRedirect(img, "text-to-image")}
                 >
                   Use in Text2Image
                 </button>
                 <button
-                  className="bg-green-500 text-xs text-white rounded  p-1"
+                  className="bg-foreground/5 hover:bg-foreground/10 text-xs text-foreground rounded p-1.5 transition-colors cursor-pointer"
                   onClick={() => handleRedirect(img, "image-to-image")}
                 >
                   Use in Img2Img
                 </button>
                 <button
-                  className="bg-purple-500 text-xs text-white rounded p-1"
+                  className="bg-foreground/5 hover:bg-foreground/10 text-xs text-foreground rounded p-1.5 transition-colors cursor-pointer"
                   onClick={() => handleRedirect(img, "inpainting")}
                 >
                   Use in Inpainting
                 </button>
                 <button
-                  className="bg-yellow-500 text-xs text-white rounded p-1"
+                  className="bg-foreground/5 hover:bg-foreground/10 text-xs text-foreground rounded p-1.5 transition-colors cursor-pointer"
                   onClick={() => handleRedirect(img, "control-net")}
                 >
                   Use in Control Net
                 </button>
                 <button
-                  className="bg-orange-500 text-xs text-white rounded p-1"
+                  className="bg-foreground/5 hover:bg-foreground/10 text-xs text-foreground rounded p-1.5 transition-colors cursor-pointer"
                   onClick={() => handleRedirect(img, "outpainting")}
                 >
                   Use in Outpainting
                 </button>
                 <button
-                  className="bg-red-500 text-xs text-white rounded  p-1"
+                  className="bg-[#f3e3df] hover:bg-[#ecd5cf] text-xs text-[#7a3b2e] rounded p-1.5 transition-colors cursor-pointer"
                   onClick={() => handleDelete(img.id)}
                 >
                   Delete
                 </button>
               </div>
-            </div>
+            </Card>
           ))
         )}
       </div>
 
       <div className="flex justify-center items-center gap-4 mt-5">
         <button
-          className="bg-gray-300 rounded px-3 py-1 disabled:opacity-50"
+          className="bg-foreground/10 hover:bg-foreground/15 rounded px-3 py-1 disabled:opacity-50 transition-colors cursor-pointer"
           onClick={() => handlePageChange(page - 1)}
           disabled={page === 1 || loading}
         >
           Previous
         </button>
 
-        <span>Page </span>
+        <span className="text-muted">Page </span>
         <select
           value={page}
           onChange={(e) => handlePageChange(Number(e.target.value))}
-          className="border rounded px-2 py-1 max-h-40 overflow-y-auto disabled:opacity-50"
+          className="border border-foreground/15 rounded px-2 py-1 max-h-40 overflow-y-auto disabled:opacity-50 bg-transparent"
           disabled={loading}
         >
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -210,10 +226,10 @@ const Gallery = () => {
             </option>
           ))}
         </select>
-        <span> of {totalPages}</span>
+        <span className="text-muted"> of {totalPages}</span>
 
         <button
-          className="bg-gray-300 rounded px-3 py-1 disabled:opacity-50"
+          className="bg-foreground/10 hover:bg-foreground/15 rounded px-3 py-1 disabled:opacity-50 transition-colors cursor-pointer"
           onClick={() => handlePageChange(page + 1)}
           disabled={page === totalPages || loading}
         >

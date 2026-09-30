@@ -280,9 +280,9 @@ export default function Canvas() {
   const currentImage = workflowNodes[workflowNodes.length - 1]?.image || null;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen p-4">
       <div className="w-full mx-auto h-[calc(100vh-4rem)]">
-        <h1 className="font-bold text-3xl mb-8 text-gray-800">Canvas Workflow</h1>
+        <h1 className="font-bold text-3xl mb-8">Canvas Workflow</h1>
 
         <div className="flex flex-col lg:flex-row gap-8 h-full">
           <WorkflowPanel
@@ -294,9 +294,9 @@ export default function Canvas() {
             onDelete={(id) => deleteWorkflow(id)}
           />
 
-          <div className="flex-1 bg-white rounded-lg shadow p-6 flex flex-col h-full" ref={canvasContainerRef}>
-            <h2 className="font-semibold text-lg text-gray-700 mb-6">Workflow Graph ({workflows.find(w => w.id === currentWorkflowId)?.name || currentWorkflowId})</h2>
-            <div className="relative flex-1 border rounded p-2 overflow-auto">
+          <div className="flex-1 bg-white rounded-lg shadow-sm border border-foreground/10 p-6 flex flex-col h-full" ref={canvasContainerRef}>
+            <h2 className="font-semibold text-lg text-muted mb-6">Workflow Graph ({workflows.find(w => w.id === currentWorkflowId)?.name || currentWorkflowId})</h2>
+            <div className="relative flex-1 border border-foreground/10 rounded p-2 overflow-auto">
               <svg
                 style={{
                   position: "absolute",
@@ -318,12 +318,11 @@ export default function Canvas() {
                     refY="3"
                     orient="auto"
                   >
-                    <polygon points="0 0, 10 3, 0 6" fill="black" />
+                    <polygon points="0 0, 10 3, 0 6" fill="#27221f" />
                   </marker>
                 </defs>
                 {workflowNodes.map((node) => {
                   if (node.id === "start") return null;
-                  console.log(node, node.image_id, node.parent_id);
                   const parentNode = workflowNodes.find((n) => n.image_id === node.parent_id);
                   if (!parentNode) return null;
                   const x1 = (parentNode.x ?? 20) + 224;
@@ -338,7 +337,7 @@ export default function Canvas() {
                     <path
                       key={`line-${node.id}`}
                       d={pathData}
-                      stroke="black"
+                      stroke="#27221f"
                       strokeWidth="2"
                       fill="none"
                       markerEnd="url(#arrowhead)"
@@ -368,9 +367,9 @@ export default function Canvas() {
           </div>
 
           <div className="w-96 flex-shrink-0 flex flex-col gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="font-semibold text-lg text-gray-700 mb-4">Current Image</h2>
-              <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center border-2 border-gray-300">
+            <div className="bg-white rounded-lg shadow-sm border border-foreground/10 p-6">
+              <h2 className="font-semibold text-lg text-muted mb-4">Current Image</h2>
+              <div className="w-full h-48 bg-foreground/5 rounded-lg overflow-hidden flex items-center justify-center border border-foreground/10">
                 {currentImage ? (
                   <img
                     src={typeof currentImage === "string" ? currentImage : `data:image/png;base64,${currentImage}`}
@@ -378,14 +377,14 @@ export default function Canvas() {
                     className="object-contain w-full h-full"
                   />
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-gray-500">
-                    <div className="w-12 h-12 bg-gray-300 rounded-full mb-2"></div>
+                  <div className="flex flex-col items-center justify-center text-muted">
+                    <div className="w-12 h-12 bg-foreground/10 rounded-full mb-2"></div>
                     <p className="text-sm">No image yet</p>
                   </div>
                 )}
               </div>
 
-              <p className="text-sm text-gray-600 mt-3">{workflowNodes.length} step{workflowNodes.length !== 1 ? "s" : ""}</p>
+              <p className="text-sm text-muted mt-3">{workflowNodes.length} step{workflowNodes.length !== 1 ? "s" : ""}</p>
             </div>
           </div>
         </div>

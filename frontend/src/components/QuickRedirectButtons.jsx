@@ -27,7 +27,7 @@ const RedirectButtons = ({ image, setLoadedImage, updateImage }) => {
   return (
     <div className="absolute bottom-2 right-2 flex gap-2">
       <button
-        className="bg-yellow-400 text-black p-2 rounded hover:bg-yellow-500 transition"
+        className="bg-primary text-primary-foreground p-2 rounded hover:opacity-90 transition"
         onClick={() => handleWorkflowRedirect("image-to-image")}
         title="Image-to-image"
       >
@@ -35,7 +35,7 @@ const RedirectButtons = ({ image, setLoadedImage, updateImage }) => {
       </button>
 
       <button
-        className="bg-yellow-400 text-black p-2 rounded hover:bg-yellow-500 transition"
+        className="bg-primary text-primary-foreground p-2 rounded hover:opacity-90 transition"
         onClick={() => handleWorkflowRedirect("inpainting")}
         title="Inpainting"
       >
@@ -43,7 +43,7 @@ const RedirectButtons = ({ image, setLoadedImage, updateImage }) => {
       </button>
 
       <button
-        className="bg-yellow-400 text-black p-2 rounded hover:bg-yellow-500 transition"
+        className="bg-primary text-primary-foreground p-2 rounded hover:opacity-90 transition"
         onClick={() => handleWorkflowRedirect("control-net")}
         title="Control Net"
       >
@@ -51,7 +51,7 @@ const RedirectButtons = ({ image, setLoadedImage, updateImage }) => {
       </button>
 
       <button
-        className="bg-yellow-400 text-black p-2 rounded hover:bg-yellow-500 transition"
+        className="bg-primary text-primary-foreground p-2 rounded hover:opacity-90 transition"
         onClick={() => handleWorkflowRedirect("outpainting")}
         title="Outpainting"
       >

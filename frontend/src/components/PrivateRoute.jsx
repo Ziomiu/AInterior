@@ -1,18 +1,29 @@
-import { useSelector } from 'react-redux';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Navigate } from 'react-router-dom';
+import { logout } from '../features/auth/authSlice';
 
-const PrivateRoute = ({ children }) => {
-  const isAuthenticated = useSelector(state => state.auth.isAuthenticated);
-  const token = localStorage.getItem("token");
-
-  if (!token || !isAuthenticated) return <Navigate to="/views/account/login" replace />;
-
+const isTokenValid = (token) => {
+  if (!token) return false;
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
-    if (payload.exp * 1000 < Date.now()) return <Navigate to="/views/account/login" replace />;
+    return payload.exp * 1000 > Date.now();
   } catch {
-    return <Navigate to="/views/account/login" replace />;
+    return false;
   }
+};
+
+const PrivateRoute = ({ children }) => {
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector(state => state.auth.isAuthenticated);
+  const token = localStorage.getItem("token");
+  const isValid = isAuthenticated && isTokenValid(token);
+
+  useEffect(() => {
+    if (!isValid && isAuthenticated) dispatch(logout());
+  }, [isValid, isAuthenticated, dispatch]);
+
+  if (!isValid) return <Navigate to="/views/account/login" replace />;
 
   return children;
 };

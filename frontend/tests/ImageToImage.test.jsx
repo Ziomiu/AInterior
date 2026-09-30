@@ -4,7 +4,6 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { it, expect, describe, vi, afterEach } from 'vitest';
 
 import axios from 'axios'
-import React from 'react';
 import { store } from '../src/store';
 import { Provider } from "react-redux";
 import { MemoryRouter } from 'react-router-dom';
@@ -46,7 +45,7 @@ describe('ImageToImage', () => {
         await userEvent.click(toggleButton);
 
         const guidance_scale = screen.getByText(/Guidance scale/i);
-        const seed = screen.getByText(/Seed/i);
+        const seed = screen.getByText(/^Seed$/i);
         const scaling_mode = screen.getByText(/Choose image scaling mode/i);
         const model = screen.getByText(/Choose model/i);
 
@@ -57,7 +56,7 @@ describe('ImageToImage', () => {
     });
 
     it('should start image generation and display image', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => key === 'token' ? 'example-token' : null);
 
         renderAll(<ImageToImage />);
@@ -78,7 +77,7 @@ describe('ImageToImage', () => {
     });
 
     it('should not start image generation, anonymous user', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation(() => null);
 
         renderAll(<ImageToImage />);
@@ -100,7 +99,7 @@ describe('ImageToImage', () => {
     });
 
     it('should start image generation and not display image, backend error', async () => {
-        vi.spyOn(Storage.prototype, 'getItem')
+        vi.spyOn(localStorage, 'getItem')
             .mockImplementation((key) => key === 'token' ? 'example-token' : null);
 
         renderAll(<ImageToImage />);

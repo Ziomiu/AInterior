@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+
 export default function UsersList() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -86,13 +89,13 @@ export default function UsersList() {
     }
   };
 
-  if (loading) return <p>Loading users...</p>;
+  if (loading) return <p className="text-muted">Loading users...</p>;
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <div className="overflow-x-auto bg-white rounded-xl shadow-md p-4">
+    <div className="p-6 min-h-screen">
+      <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-foreground/10 p-4">
         <table className="w-full table-auto border-collapse">
-          <thead className="bg-gray-200">
+          <thead className="bg-foreground/5">
             <tr>
               <th className="p-2">ID</th>
               <th className="p-2">First Name</th>
@@ -104,7 +107,7 @@ export default function UsersList() {
           </thead>
           <tbody>
             {users.map((user) => (
-              <tr key={user.id} className="border-b hover:bg-gray-100">
+              <tr key={user.id} className="border-b border-foreground/10 hover:bg-foreground/5">
                 <td className="p-2">{user.id}</td>
                 <td className="p-2">{user.first_name}</td>
                 <td className="p-2">{user.last_name}</td>
@@ -112,13 +115,13 @@ export default function UsersList() {
                 <td className="p-2">{user.role}</td>
                 <td className="p-2 space-x-2">
                   <button
-                    className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600"
+                    className="bg-foreground/5 hover:bg-foreground/10 text-foreground px-3 py-1 rounded-lg transition-colors cursor-pointer"
                     onClick={() => navigate(`/views/adminPanel/user/${user.id}`)}
                   >
                     Details
                   </button>
                   <button
-                    className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600"
+                    className="bg-foreground/5 hover:bg-foreground/10 text-foreground px-3 py-1 rounded-lg transition-colors cursor-pointer"
                     onClick={() => openEditModal(user)}
                   >
                     Edit
@@ -131,80 +134,74 @@ export default function UsersList() {
       </div>
 
       {editingUser && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-96">
+        <div className="fixed inset-0 flex items-center justify-center bg-foreground/50">
+          <div className="bg-white p-6 rounded-lg shadow-xl border border-foreground/10 w-96">
             <h2 className="text-xl font-bold mb-4">Edit User</h2>
 
-            <label className="block mb-2">
+            <label className="block mb-2 text-sm">
               First Name:
-              <input
+              <Input
                 type="text"
                 name="first_name"
                 value={formData.first_name}
                 onChange={handleChange}
-                className="w-full border p-2 rounded mt-1"
+                className="mt-1"
               />
             </label>
 
-            <label className="block mb-2">
+            <label className="block mb-2 text-sm">
               Last Name:
-              <input
+              <Input
                 type="text"
                 name="last_name"
                 value={formData.last_name}
                 onChange={handleChange}
-                className="w-full border p-2 rounded mt-1"
+                className="mt-1"
               />
             </label>
 
-            <label className="block mb-2">
+            <label className="block mb-2 text-sm">
               Email:
-              <input
+              <Input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full border p-2 rounded mt-1"
+                className="mt-1"
               />
             </label>
 
-            <label className="block mb-4">
+            <label className="block mb-4 text-sm">
               Role:
               <select
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="w-full border p-2 rounded mt-1"
+                className="w-full border border-foreground/15 rounded-md p-2 mt-1 bg-transparent focus:outline-none focus:ring-2 focus:ring-accent"
               >
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </select>
             </label>
 
-            <label className="block mb-2">
+            <label className="block mb-2 text-sm">
               New password:
-              <input
+              <Input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full border p-2 rounded mt-1"
+                className="mt-1"
               />
             </label>
 
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setEditingUser(null)}
-                className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500"
-              >
+            <div className="flex justify-end space-x-2 mt-2">
+              <Button variant="outline" onClick={() => setEditingUser(null)}>
                 Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
-              >
+              </Button>
+              <Button onClick={handleSave}>
                 Save
-              </button>
+              </Button>
             </div>
           </div>
         </div>

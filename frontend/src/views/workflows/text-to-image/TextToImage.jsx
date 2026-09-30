@@ -8,6 +8,10 @@ import { toaster } from "../../../components/ui/toaster";
 import TextTooltip from "../../../components/TextTooltip";
 import SliderControl from "../../../components/SliderControl";
 import RedirectButtons from "../../../components/QuickRedirectButtons";
+import Card from "../../../components/ui/Card";
+import Button from "../../../components/ui/Button";
+import Input from "../../../components/ui/Input";
+import Toggle from "../../../components/ui/Toggle";
 import { saveToCanvas } from "../canvas/utilities/saveToCanvas";
 
 const TextToImage = () => {
@@ -172,10 +176,10 @@ const TextToImage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center items-center p-4">
-      <div className="w-full max-w-[1800px] flex flex-col xl:flex-row gap-8 bg-white rounded-lg shadow p-5">
+    <div className="flex-1 flex flex-col items-center justify-center p-4">
+      <Card className="w-full max-w-[1800px] flex flex-col xl:flex-row gap-8 p-5">
         {/* Panel */}
-        <div className="flex-1 flex flex-col gap-4 h-[60vh] overflow-y-auto">
+        <div className="flex-1 flex flex-col gap-4">
           {shouldRedirectToCanvas === "true" ?
             <h1 className="font-bold text-3xl mb-5">Text to image (Canvas)</h1> :
             <h1 className="font-bold text-3xl mb-5">Text to image</h1>
@@ -185,12 +189,14 @@ const TextToImage = () => {
 
           {showAdvancedParameters ? (
             <>
-              <button
+              <Button
+                variant="outline"
+                size="md"
                 onClick={() => setShowAdvancedParameters(false)}
-                className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm font-medium"
+                className="self-start normal-case tracking-normal"
               >
                 Hide advanced parameters ▲
-              </button>
+              </Button>
 
 
               <SliderControl label="Width" description="Width of the generated image." value={width} min={64} max={1024} step={64} onChange={(v) => setWidth(v[0])} />
@@ -203,15 +209,7 @@ const TextToImage = () => {
                   text="Auto randomize seed"
                   tooltip="Enable or disable automatic seed randomization."
                 />
-                <div
-                  onClick={() => { setRandomizeSeed(!randomizeSeed); }}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${randomizeSeed ? "bg-green-500" : "bg-gray-400"}`
-                  }
-                >
-                  <div
-                    className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200 ${randomizeSeed ? "translate-x-6" : "translate-x-0"}`}
-                  ></div>
-                </div>
+                <Toggle checked={randomizeSeed} onChange={setRandomizeSeed} />
               </div>
 
               <div className="flex flex-col gap-2">
@@ -220,24 +218,23 @@ const TextToImage = () => {
                   tooltip="Controls the randomness in image generation. Keeping it fixed while adjusting other parameters will produce very similar images."
                 />
                 <div className="flex gap-4 items-center">
-                  <input
+                  <Input
                     type="number"
                     value={seed}
                     min={0}
                     max={999999999}
                     onChange={(e) => setSeed(Number(e.target.value))}
-                    className={`w-full p-2 border rounded ${randomizeSeed ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-white"}`}
                     disabled={randomizeSeed}
                   />
-                  <button
+                  <Button
+                    variant="outline"
+                    size="md"
                     onClick={() => setSeed(Math.floor(Math.random() * 999999999))}
-                    className={`px-4 py-2 rounded ${randomizeSeed
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-yellow-400 text-black hover:bg-yellow-500"}`}
                     disabled={randomizeSeed}
+                    className="normal-case tracking-normal shrink-0"
                   >
                     Randomize
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -247,61 +244,46 @@ const TextToImage = () => {
                   tooltip="Choose the Stable Diffusion model version. Generally, a higher version means better quality but longer generation times."
                 />
                 <div className="flex gap-4 flex-wrap">
-                  <button
-                    onClick={() => setModel("1.5")}
-                    className={`rounded-2xl border-2 px-4 py-2 w-24 transition ${model === "1.5" ? "bg-black text-white" : "text-black bg-transparent hover:bg-gray-200"}`}
-                  >
-                    1.5
-                  </button>
-                  <button
-                    onClick={() => setModel("2.1")}
-                    className={`rounded-2xl border-2 px-4 py-2 w-24 transition ${model === "2.1" ? "bg-black text-white" : "text-black bg-transparent hover:bg-gray-200"}`}
-                  >
-                    2.1
-                  </button>
-                  <button
-                    onClick={() => setModel("3.0")}
-                    className={`rounded-2xl border-2 px-4 py-2 w-24 transition ${model === "3.0" ? "bg-black text-white" : "text-black bg-transparent hover:bg-gray-200"}`}
-                  >
-                    3.0
-                  </button>
-                  <button
-                    onClick={() => setModel("xl")}
-                    className={`rounded-2xl border-2 px-4 py-2 w-24 transition ${model === "xl" ? "bg-black text-white" : "text-black bg-transparent hover:bg-gray-200"}`}
-                  >
-                    xl
-                  </button>
+                  {["1.5", "2.1", "3.0", "xl"].map((version) => (
+                    <button
+                      key={version}
+                      onClick={() => setModel(version)}
+                      className={`rounded-2xl border-2 px-4 py-2 w-24 transition cursor-pointer ${model === version ? "bg-primary text-primary-foreground border-primary" : "text-foreground bg-transparent border-foreground/20 hover:bg-foreground/5"}`}
+                    >
+                      {version}
+                    </button>
+                  ))}
                 </div>
               </div>
             </>
           ) : (
-            <button
+            <Button
+              variant="outline"
+              size="md"
               onClick={() => setShowAdvancedParameters(true)}
-              className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm font-medium"
+              className="self-start normal-case tracking-normal"
             >
               Show advanced parameters ▼
-            </button>
+            </Button>
           )}
 
-          {loading ? (
-            <button onClick={generate} disabled={true} className="mt-auto w-full bg-gray-400 text-black py-2 rounded cursor-not-allowed">
-              Generating...
-            </button>
-          )
-            : (
-              <button onClick={generate} disabled={false} className="mt-auto w-full bg-yellow-400 text-black py-2 rounded">
-                Generate
-              </button>
-            )}
+          <Button
+            variant="accent"
+            onClick={generate}
+            disabled={loading}
+            className="mt-auto w-full normal-case tracking-normal"
+          >
+            {loading ? "Generating..." : "Generate"}
+          </Button>
 
         </div>
-        {/* Obrazek */}
-        <div className="flex-1 aspect-square flex items-center justify-center bg-gray-200 rounded-md overflow-hidden relative">
+        {/* Preview */}
+        <div className="flex-1 aspect-square flex items-center justify-center bg-foreground/5 rounded-md overflow-hidden relative">
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-2 animate-pulse w-full h-full">
-              <div className="rounded-full bg-gray-300 h-12 w-12"></div>
-              <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-              <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+              <div className="rounded-full bg-foreground/10 h-12 w-12"></div>
+              <div className="h-4 bg-foreground/10 rounded w-3/4"></div>
+              <div className="h-4 bg-foreground/10 rounded w-1/2"></div>
             </div>
           ) : (
             image ? (
@@ -315,14 +297,14 @@ const TextToImage = () => {
                 />
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center text-gray-500">
+              <div className="flex flex-col items-center justify-center text-muted">
                 <p>Generated image will appear here</p>
               </div>
             )
           )}
         </div>
-      </div>
-    </div >
+      </Card>
+    </div>
   );
 };
 

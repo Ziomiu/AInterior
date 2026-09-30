@@ -10,6 +10,10 @@ import { toaster } from "../../../components/ui/toaster";
 import TextTooltip from "../../../components/TextTooltip";
 import SliderControl from "../../../components/SliderControl";
 import RedirectButtons from "../../../components/QuickRedirectButtons";
+import Card from "../../../components/ui/Card";
+import Button from "../../../components/ui/Button";
+import Input from "../../../components/ui/Input";
+import Toggle from "../../../components/ui/Toggle";
 import { saveToCanvas } from "../canvas/utilities/saveToCanvas";
 
 const ControlNet = () => {
@@ -172,8 +176,8 @@ const ControlNet = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-[1800px] bg-white rounded-lg shadow p-5">
+    <div className="min-h-screen flex flex-col justify-center items-center p-4">
+      <Card className="w-full max-w-[1800px] p-5">
 
         {shouldRedirectToCanvas === "true" ?
           <h1 className="font-bold text-3xl mb-5">Control Net (Canvas)</h1> :
@@ -182,7 +186,7 @@ const ControlNet = () => {
 
         <div className="flex flex-col xl:flex-row gap-8">
           <div className="flex-1 flex flex-col">
-            <div className="w-full h-full border-2 border-dashed border-gray-400 rounded-lg bg-gray-200 hover:bg-gray-300 transition-colors">
+            <div className="w-full h-full border-2 border-dashed border-foreground/20 rounded-lg bg-foreground/5 hover:bg-foreground/10 transition-colors">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -196,9 +200,9 @@ const ControlNet = () => {
                   htmlFor="file-input"
                   className="w-full h-full flex flex-col items-center justify-center cursor-pointer"
                 >
-                  <FiUpload size={23} className="mb-2 text-gray-500" />
-                  <p className="text-gray-700">Drag and drop files here</p>
-                  <p className="text-gray-500 text-sm">.png, .jpg up to 5MB</p>
+                  <FiUpload size={23} className="mb-2 text-muted" />
+                  <p className="text-foreground/85">Drag and drop files here</p>
+                  <p className="text-muted text-sm">.png, .jpg up to 5MB</p>
                 </label>
               ) : (
                 <div className="relative w-full h-full">
@@ -208,7 +212,7 @@ const ControlNet = () => {
                     className="w-full h-full object-contain rounded-md"
                   />
                   <button
-                    className="absolute top-2 right-2 bg-gray-700 text-white rounded-full p-2 hover:bg-gray-800 transition"
+                    className="absolute top-2 right-2 bg-foreground text-background rounded-full p-2 hover:opacity-90 transition cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
@@ -223,12 +227,12 @@ const ControlNet = () => {
             </div>
           </div>
 
-          <div className="flex-1 aspect-square flex items-center justify-center bg-gray-200 rounded-md overflow-hidden relative">
+          <div className="flex-1 aspect-square flex items-center justify-center bg-foreground/5 rounded-md overflow-hidden relative">
             {loading ? (
               <div className="flex flex-col items-center justify-center gap-2 animate-pulse w-full h-full">
-                <div className="rounded-full bg-gray-300 h-12 w-12"></div>
-                <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+                <div className="rounded-full bg-foreground/10 h-12 w-12"></div>
+                <div className="h-4 bg-foreground/10 rounded w-3/4"></div>
+                <div className="h-4 bg-foreground/10 rounded w-1/2"></div>
               </div>
             ) : (
               image ? (
@@ -242,7 +246,7 @@ const ControlNet = () => {
                   />
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center text-gray-500">
+                <div className="flex flex-col items-center justify-center text-muted">
                   <p>Generated image will appear here</p>
                 </div>
               )
@@ -255,12 +259,14 @@ const ControlNet = () => {
 
           {showAdvancedParameters ? (
             <>
-              <button
+              <Button
+                variant="outline"
+                size="md"
                 onClick={() => setShowAdvancedParameters(false)}
-                className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm font-medium"
+                className="self-start normal-case tracking-normal"
               >
                 Hide advanced parameters ▲
-              </button>
+              </Button>
 
               <SliderControl label="Guidance scale" description="Controls how strictly the model follows the prompt. The recommended value is 7 or 8." value={guidance} min={0} max={25} step={0.1} onChange={(v) => setGuidance(v[0])} />
               <SliderControl label="Canny low threshold" description="Decides which faint lines can be counted as edges. Lower equals more lines detected, higher equals only clearer ones." value={cannyLowThreshold} min={0} max={1.0} step={0.01} onChange={(v) => setCannyLowThreshold(v[0])} />
@@ -271,15 +277,7 @@ const ControlNet = () => {
                   text="Auto randomize seed"
                   tooltip="Enable or disable automatic seed randomization."
                 />
-                <div
-                  onClick={() => { setRandomizeSeed(!randomizeSeed); }}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-200 ${randomizeSeed ? "bg-green-500" : "bg-gray-400"}`
-                  }
-                >
-                  <div
-                    className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200 ${randomizeSeed ? "translate-x-6" : "translate-x-0"}`}
-                  ></div>
-                </div>
+                <Toggle checked={randomizeSeed} onChange={setRandomizeSeed} />
               </div>
 
               <div className="flex flex-col gap-2">
@@ -288,24 +286,23 @@ const ControlNet = () => {
                   tooltip="Controls the randomness in image generation. Keeping it fixed while adjusting other parameters will produce very similar images."
                 />
                 <div className="flex gap-4 items-center">
-                  <input
+                  <Input
                     type="number"
                     value={seed}
                     min={0}
                     max={999999999}
                     onChange={(e) => setSeed(Number(e.target.value))}
-                    className={`w-full p-2 border rounded ${randomizeSeed ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-white"}`}
                     disabled={randomizeSeed}
                   />
-                  <button
+                  <Button
+                    variant="outline"
+                    size="md"
                     onClick={() => setSeed(Math.floor(Math.random() * 999999999))}
-                    className={`px-4 py-2 rounded ${randomizeSeed
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-yellow-400 text-black hover:bg-yellow-500"}`}
                     disabled={randomizeSeed}
+                    className="normal-case tracking-normal shrink-0"
                   >
                     Randomize
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -315,24 +312,19 @@ const ControlNet = () => {
                   tooltip="The image should be rescaled before being passed to the generative model to match the resolution it was trained on, ensuring the best results."
                 />
                 <div className="flex gap-4 flex-wrap">
-                  <button
-                    onClick={() => setScalingMode("resize_and_pad")}
-                    className={`rounded-2xl border-2 px-4 py-2 transition ${scalingMode === "resize_and_pad" ? "bg-black text-white" : "text-black bg-transparent hover:bg-gray-200"}`}
-                  >
-                    Resize and pad
-                  </button>
-                  <button
-                    onClick={() => setScalingMode("scale_to_megapixels")}
-                    className={`rounded-2xl border-2 px-4 py-2 transition ${scalingMode === "scale_to_megapixels" ? "bg-black text-white" : "text-black bg-transparent hover:bg-gray-200"}`}
-                  >
-                    Scale to megapixels
-                  </button>
-                  <button
-                    onClick={() => setScalingMode("none")}
-                    className={`rounded-2xl border-2 px-4 py-2 transition ${scalingMode === "none" ? "bg-black text-white" : "text-black bg-transparent hover:bg-gray-200"}`}
-                  >
-                    None
-                  </button>
+                  {[
+                    { value: "resize_and_pad", label: "Resize and pad" },
+                    { value: "scale_to_megapixels", label: "Scale to megapixels" },
+                    { value: "none", label: "None" },
+                  ].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setScalingMode(value)}
+                      className={`rounded-2xl border-2 px-4 py-2 transition cursor-pointer ${scalingMode === value ? "bg-primary text-primary-foreground border-primary" : "text-foreground bg-transparent border-foreground/20 hover:bg-foreground/5"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -344,7 +336,7 @@ const ControlNet = () => {
                 <div className="flex gap-4 flex-wrap">
                   <button
                     onClick={() => setModel("controlnet")}
-                    className={`rounded-2xl border-2 px-4 py-2 w-32 transition ${model === "controlnet" ? "bg-black text-white" : "text-black bg-transparent hover:bg-gray-200"}`}
+                    className={`rounded-2xl border-2 px-4 py-2 w-32 transition cursor-pointer ${model === "controlnet" ? "bg-primary text-primary-foreground border-primary" : "text-foreground bg-transparent border-foreground/20 hover:bg-foreground/5"}`}
                   >
                     Control Net
                   </button>
@@ -353,34 +345,28 @@ const ControlNet = () => {
 
             </>
           ) : (
-            <button
+            <Button
+              variant="outline"
+              size="md"
               onClick={() => setShowAdvancedParameters(true)}
-              className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded text-sm font-medium"
+              className="self-start normal-case tracking-normal"
             >
               Show advanced parameters ▼
-            </button>
+            </Button>
           )}
 
-          {loadedImage ? (
-            loading ? (
-              <button onClick={generate} disabled={true} className="mt-auto w-full bg-gray-400 text-black py-2 rounded cursor-not-allowed" >
-                Generating...
-              </button>
-            )
-              : (
-                <button onClick={generate} disabled={false} className="mt-auto w-full bg-yellow-400 text-black py-2 rounded">
-                  Generate
-                </button>
-              )
-          ) : (
-            <button onClick={generate} disabled={true} className="mt-auto w-full bg-gray-400 text-black py-2 rounded cursor-not-allowed">
-              Generate
-            </button>
-          )}
+          <Button
+            variant="accent"
+            onClick={generate}
+            disabled={!loadedImage || loading}
+            className="mt-auto w-full normal-case tracking-normal"
+          >
+            {loading ? "Generating..." : "Generate"}
+          </Button>
 
         </div>
-      </div>
-    </div >
+      </Card>
+    </div>
   );
 };
 

@@ -2,15 +2,6 @@ import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveToCanvas } from "./saveToCanvas";
 
-const WORKFLOW_COLORS = {
-  start: "bg-gray-500",
-  txt2img: "bg-blue-500",
-  img2img: "bg-purple-500",
-  inpainting: "bg-green-500",
-  controlnet: "bg-orange-500",
-  outpainting: "bg-pink-500",
-};
-
 const WORKFLOW_LABELS = {
   start: "Start",
   txt2img: "Text to Image",
@@ -30,7 +21,6 @@ const WORKFLOW_BUTTONS = [
 
 export default function WorkflowNode({ node, onImageGenerated, onModify, onDelete, onDrag, onGenerate }) {
   const navigate = useNavigate();
-  const bgColor = WORKFLOW_COLORS[node.workflow || node.type] || "bg-gray-500";
   const label = WORKFLOW_LABELS[node.workflow || node.type] || node.label;
 
   const mapWorkflowToRoute = (id) => {
@@ -152,14 +142,14 @@ const handleFileChange = (e) => {
 
   return (
     <div
-      className="bg-white border-2 border-gray-200 rounded-lg p-3 shadow-md hover:shadow-lg transition w-56 cursor-grab relative"
+      className="bg-white border border-foreground/15 rounded-lg p-3 shadow-sm hover:shadow-md transition w-56 cursor-grab relative"
       onMouseDown={handlePointerDown}
       onTouchStart={handlePointerDown}
     >
       {node.id === "start" && (
         <button
           onClick={handleUploadClick}
-          className="absolute top-2 left-2 text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded cursor-pointer"
+          className="absolute top-2 left-2 text-xs bg-accent/15 text-accent px-2 py-0.5 rounded cursor-pointer"
           aria-label="Add image to node"
         >
           Add
@@ -168,13 +158,12 @@ const handleFileChange = (e) => {
       <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
       <button
         onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-        //className="absolute top-2 right-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded"
         className="
           absolute top-2 right-2 text-xs px-2 py-0.5 rounded
-          bg-red-100 text-red-600
+          bg-[#f3e3df] text-[#7a3b2e]
           cursor-pointer
-          disabled:bg-gray-200
-          disabled:text-gray-400
+          disabled:bg-foreground/10
+          disabled:text-muted
           disabled:cursor-not-allowed
           disabled:pointer-events-none
         "
@@ -187,7 +176,7 @@ const handleFileChange = (e) => {
       <div className="space-y-2 mt-2">
 
 
-        <div className="w-full h-32 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center border border-gray-300">
+        <div className="w-full h-32 bg-foreground/5 rounded-lg overflow-hidden flex items-center justify-center border border-foreground/10">
           {node.image ? (
             <img
               src={typeof node.image === "string" ? node.image : `data:image/png;base64,${node.image}`}
@@ -195,8 +184,8 @@ const handleFileChange = (e) => {
               className="object-contain w-full h-full"
             />
           ) : (
-            <div className="flex flex-col items-center justify-center text-gray-500">
-              <div className="w-6 h-6 bg-gray-300 rounded-full mb-1"></div>
+            <div className="flex flex-col items-center justify-center text-muted">
+              <div className="w-6 h-6 bg-foreground/10 rounded-full mb-1"></div>
               <p className="text-xs">
                 {node.type === "start" ? "Input" : "Processing..."}
               </p>
@@ -210,7 +199,7 @@ const handleFileChange = (e) => {
               key={w.id}
               onClick={(e) => { e.stopPropagation(); handleWorkflowClick(w.id); }}
               disabled={!node.image}
-              className={`cursor-pointer text-xs font-semibold py-1 px-2 rounded whitespace-normal text-center ${node.image ? "bg-blue-500 text-white hover:bg-blue-600" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
+              className={`cursor-pointer text-xs font-semibold py-1 px-2 rounded whitespace-normal text-center transition-colors ${node.image ? "bg-primary text-primary-foreground hover:opacity-90" : "bg-foreground/10 text-muted cursor-not-allowed"}`}
             >
               {w.label}
             </button>

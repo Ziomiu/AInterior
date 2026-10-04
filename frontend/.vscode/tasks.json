@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Furniture integration staging",
+			"type": "shell",
+			"command": "API_PROXY_TARGET=http://127.0.0.1:18556 npm run dev -- --host 127.0.0.1 --port 5174 --strictPort",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Furniture integration staging",
+			"type": "shell",
+			"command": "API_PROXY_TARGET=http://127.0.0.1:18556 npm run dev -- --host 127.0.0.1 --port 5174 --strictPort",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

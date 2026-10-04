@@ -26,6 +26,8 @@ services:
       - output_images:/backend/output_images
     environment:
       ENV_FILE: .env
+      FURNITURE_SERVICE_URL: ${FURNITURE_SERVICE_URL:-http://furniture-replace:8000}
+      FURNITURE_SERVICE_KEY: ${FURNITURE_SERVICE_KEY:-}
     working_dir: /backend
     command: uvicorn main:app --host 0.0.0.0 --port 5555 --reload
     depends_on:
@@ -45,7 +47,7 @@ services:
       context: ./comfyui
       dockerfile: Dockerfile
     ports:
-      - 8188:8188
+      - 127.0.0.1:8188:8188
     working_dir: /comfyui
     command: python main.py --listen 0.0.0.0
     volumes:
@@ -61,6 +63,34 @@ services:
               capabilities: [gpu]
     runtime: 
       nvidia
+
+  furniture-replace:
+    profiles: [furniture]
+    build: ./furniture-replace-service
+    volumes:
+      - ./furniture-replace-service/data:/srv/data
+    environment:
+      DATA_DIR: /srv/data
+      QDRANT_URL: http://furniture-qdrant:6333
+      GPU_QUEUE_URL: http://backend:5555/internal/gpu-queue
+      SERVICE_API_KEY: ${FURNITURE_SERVICE_KEY:-}
+      MODEL_IDLE_OFFLOAD_SECONDS: 30
+    command: ["sh", "-c", "test -n \"$$SERVICE_API_KEY\" || { echo 'Set FURNITURE_SERVICE_KEY'; exit 1; }; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    depends_on:
+      - furniture-qdrant
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  furniture-qdrant:
+    profiles: [furniture]
+    image: qdrant/qdrant:v1.12.1
+    volumes:
+      - furniture_qdrant_data:/qdrant/storage
 
   mongo:
     image: mongo:latest
@@ -96,4 +126,5 @@ volumes:
   db_data:
   input_images:
   output_images:
+  furniture_qdrant_data:
 

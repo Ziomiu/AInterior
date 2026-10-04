@@ -11,7 +11,7 @@ export default defineConfig({
         },
         proxy: {
             '/api/': {
-                target: 'http://backend:5555/',
+                target: process.env.API_PROXY_TARGET || 'http://backend:5555/',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, '')
             }

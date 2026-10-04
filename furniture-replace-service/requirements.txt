@@ -1,0 +1,35 @@
+# ── Web ──────────────────────────────────────────────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-multipart==0.0.20
+pydantic==2.11.4
+pydantic-settings==2.7.1
+requests==2.32.3
+
+# ── ML core ──────────────────────────────────────────────────────────────────
+# Install a CUDA-matched torch build via the Dockerfile's extra index; the pin
+# here documents the tested version.
+torch==2.5.1
+torchvision==0.20.1
+transformers==4.49.0
+diffusers==0.33.1
+accelerate==1.6.0
+safetensors==0.5.3
+
+# ── Vision / imaging ─────────────────────────────────────────────────────────
+pillow==9.5.0
+numpy==1.26.4
+opencv-python==4.11.0.86
+
+# ── Segmentation: SAM 2.1 (installed from GitHub in the Dockerfile) ──────────
+# sam2 @ git+https://github.com/facebookresearch/sam2.git
+
+# ── Prompt-mode stage 1: LaMa ────────────────────────────────────────────────
+simple-lama-inpainting==0.1.2
+
+# ── Matching / catalog ───────────────────────────────────────────────────────
+qdrant-client==1.12.1
+
+# NOTE: BrushNet (best prompt-mode quality) needs its BrushNetModel checkpoint +
+# the BrushNet diffusers classes. If absent, prompt mode auto-falls back to
+# stock SD1.5 inpainting (see app/models/inpainting.py). See README §Models.

@@ -1,0 +1,6 @@
+services:
+  furniture-replace:
+    volumes:
+      - ./app:/srv/app:ro
+      - ./scripts:/srv/scripts:ro
+      - ./tests:/srv/tests:ro

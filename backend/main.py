@@ -8,6 +8,8 @@ from controllers.model import models
 from controllers.health import health
 from controllers.admin import admin_router
 from controllers.canvases import canvases_router
+from controllers.furniture import furniture_router
+from controllers.gpu_queue import router as gpu_queue_router
 
 app = FastAPI()
 
@@ -26,3 +28,5 @@ app.include_router(models, prefix='/model', tags=['model'])
 app.include_router(health, prefix='/health', tags=['health'])
 app.include_router(admin_router, prefix='/admin', tags=['admin'])
 app.include_router(canvases_router, prefix='/canvases', tags=['canvases'])
+app.include_router(furniture_router, prefix='/furniture', tags=['furniture'])
+app.include_router(gpu_queue_router)

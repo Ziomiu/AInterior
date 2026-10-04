@@ -1,5 +1,5 @@
 import React from "react";
-import { FaImages, FaMagic, FaBorderAll, FaExpandArrowsAlt } from "react-icons/fa";
+import { FaImages, FaMagic, FaBorderAll, FaExpandArrowsAlt, FaCouch } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const RedirectButtons = ({ image, setLoadedImage, updateImage }) => {
@@ -26,6 +26,13 @@ const RedirectButtons = ({ image, setLoadedImage, updateImage }) => {
 
   return (
     <div className="absolute bottom-2 right-2 flex gap-2">
+      <button
+        className="bg-primary text-primary-foreground p-2 rounded hover:opacity-90 transition"
+        onClick={() => handleWorkflowRedirect("furniture-replace")}
+        title="Furniture Replace"
+      >
+        <FaCouch />
+      </button>
       <button
         className="bg-primary text-primary-foreground p-2 rounded hover:opacity-90 transition"
         onClick={() => handleWorkflowRedirect("image-to-image")}

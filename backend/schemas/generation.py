@@ -1,12 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class TextToImageRequest(BaseModel):
     model_version: str
-    prompt: str
-    negative_prompt: str
+    prompt: str = Field(max_length=2000)
+    negative_prompt: str = Field(max_length=2000)
     guidance_scale: float
-    width: int
-    height: int
+    width: int = Field(ge=64, le=1024, multiple_of=64)
+    height: int = Field(ge=64, le=1024, multiple_of=64)
     seed: int
 
 

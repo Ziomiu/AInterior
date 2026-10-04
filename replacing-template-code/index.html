@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>furniture-replace — test console</title>
+<style>
+  :root {
+    --bg: #0d0f0e;
+    --panel: #141715;
+    --border: #262a27;
+    --text: #d8dcd8;
+    --muted: #6b7268;
+    --accent: #7fd858;
+    --accent-dim: #4a7a38;
+    --warn: #e0a83e;
+    --error: #e0583e;
+    --mono: 'SF Mono', 'JetBrains Mono', 'Consolas', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    margin: 0;
+    padding: 1.5rem;
+    line-height: 1.5;
+  }
+  h1 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 .2rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  h1::before { content: '▸'; }
+  .subtitle { color: var(--muted); font-size: 11px; margin-bottom: 1.5rem; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    max-width: 1100px;
+  }
+  @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+  }
+  .panel-title {
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .step-num {
+    display: inline-flex;
+    width: 16px; height: 16px;
+    border-radius: 3px;
+    background: var(--border);
+    color: var(--text);
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    margin-right: .4rem;
+  }
+
+  input[type=text], textarea, select {
+    width: 100%;
+    background: #0a0b0a;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: .5rem .6rem;
+    border-radius: 4px;
+    margin-bottom: .5rem;
+  }
+  textarea { resize: vertical; min-height: 50px; }
+  input[type=text]:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--accent-dim);
+  }
+  input[type=file] { font-size: 11px; color: var(--muted); margin-bottom: .6rem; }
+
+  label { display: block; font-size: 10px; color: var(--muted); margin-bottom: .2rem; }
+
+  button {
+    background: var(--accent);
+    color: #0a0b0a;
+    border: none;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 11px;
+    padding: .5rem .9rem;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: .03em;
+  }
+  button:hover { background: #93e26f; }
+  button:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.secondary:hover { border-color: var(--accent-dim); }
+
+  .mode-toggle { display: flex; gap: .4rem; margin-bottom: .6rem; }
+  .mode-toggle button { flex: 1; background: var(--border); color: var(--muted); }
+  .mode-toggle button.active { background: var(--accent); color: #0a0b0a; }
+
+  canvas { max-width: 100%; border: 1px solid var(--border); border-radius: 4px; cursor: crosshair; }
+  img.preview { max-width: 100%; border-radius: 4px; border: 1px solid var(--border); }
+
+  .status-line {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: .5rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .dot.running { background: var(--warn); animation: pulse 1s infinite; }
+  .dot.done { background: var(--accent); }
+  .dot.failed { background: var(--error); }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  .detections { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+  .detection-chip {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .3rem .5rem;
+    font-size: 11px;
+    cursor: pointer;
+    background: #0a0b0a;
+  }
+  .detection-chip:hover { border-color: var(--accent-dim); }
+  .detection-chip.selected { border-color: var(--accent); color: var(--accent); }
+
+  .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .6rem; }
+  .product-card {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .4rem;
+    cursor: pointer;
+    font-size: 10px;
+    text-align: center;
+  }
+  .product-card.selected { border-color: var(--accent); }
+  .product-card img { width: 100%; height: 60px; object-fit: cover; border-radius: 3px; margin-bottom: .3rem; }
+  .product-card .sim { color: var(--accent); }
+
+  .before-after { position: relative; max-width: 100%; }
+  .before-after img { width: 100%; display: block; border-radius: 4px; }
+  .ba-slider { width: 100%; margin-top: .5rem; }
+
+  .full-width { grid-column: 1 / -1; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: .8rem 0; }
+  .hint { font-size: 10px; color: var(--muted); margin-top: .3rem; }
+  code { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<h1>furniture-replace / test console</h1>
+<div class="subtitle">manual end-to-end harness — segment → match → replace · talks to the API on this origin</div>
+
+<div class="grid">
+
+  <!-- ── STEP 1: SEGMENT ── -->
+  <div class="panel">
+    <div class="panel-title"><span><span class="step-num">1</span>Segment</span></div>
+
+    <label>Photo</label>
+    <input type="file" id="imageInput" accept="image/*">
+
+    <label>Concepts (comma separated — text mode, SAM 3)</label>
+    <input type="text" id="conceptsInput" value="sofa, armchair, coffee table, floor lamp">
+
+    <button id="segmentBtn">Run segmentation</button>
+    <div class="status-line" id="segmentStatus"></div>
+
+    <canvas id="canvas" style="display:none; margin-top:.8rem;"></canvas>
+    <div class="detections" id="detections"></div>
+    <div class="hint">Click a detected object below to select it for matching.</div>
+  </div>
+
+  <!-- ── STEP 2: MATCH ── -->
+  <div class="panel">
+    <div class="panel-title"><span><span class="step-num">2</span>Match to catalog</span></div>
+    <div class="hint" style="margin-bottom:.6rem">Select a detection on the left first.</div>
+    <button id="matchBtn" disabled>Find similar products</button>
+    <div class="status-line" id="matchStatus"></div>
+    <div class="product-grid" id="products"></div>
+  </div>
+
+  <!-- ── STEP 3: REPLACE ── -->
+  <div class="panel full-width">
+    <div class="panel-title"><span><span class="step-num">3</span>Replace</span></div>
+
+    <div class="mode-toggle">
+      <button id="modePrompt" class="active">mode: prompt</button>
+      <button id="modeReference">mode: reference (needs selected product)</button>
+    </div>
+
+    <div id="promptFields">
+      <label>Prompt — describe the new furniture</label>
+      <textarea id="promptInput">modern beige linen 3-seater sofa, scandinavian minimalist style, natural lighting</textarea>
+      <label>Negative prompt (optional)</label>
+      <input type="text" id="negPromptInput" value="blurry, distorted, unrealistic, low quality, bad lighting">
+    </div>
+
+    <div id="referenceFields" style="display:none">
+      <label>ip_scale (0.7–1.0, default 0.85 from research)</label>
+      <input type="text" id="ipScaleInput" value="0.85">
+    </div>
+
+    <hr class="divider">
+    <button id="replaceBtn" disabled>Run replacement</button>
+    <div class="status-line" id="replaceStatus"></div>
+
+    <div class="before-after" id="resultArea" style="display:none; margin-top:1rem;">
+      <img id="resultImg" src="">
+      <div class="hint" id="elapsedHint"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = ''; // same origin
+
+// ── State ─────────────────────────────────────────────────────────────────
+let currentImageBase64 = null;
+let currentImageEl = null;
+let detections = [];
+let selectedDetection = null;
+let selectedProduct = null;
+let replaceMode = 'prompt';
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function setStatus(el, status, extra = '') {
+  const dotClass = { queued: '', running: 'running', done: 'done', failed: 'failed' }[status] || '';
+  el.innerHTML = `<span class="dot ${dotClass}"></span> ${status}${extra ? ' — ' + extra : ''}`;
+}
+
+async function pollJob(jobId, statusEl) {
+  while (true) {
+    const res = await fetch(`${API}/v1/jobs/${jobId}`);
+    const data = await res.json();
+    setStatus(statusEl, data.status);
+    if (data.status === 'done') return data.result;
+    if (data.status === 'failed') throw new Error(data.error || 'job failed');
+    await new Promise(r => setTimeout(r, 800));
+  }
+}
+
+// ── Step 1: Segment ──────────────────────────────────────────────────────
+document.getElementById('segmentBtn').onclick = async () => {
+  const fileInput = document.getElementById('imageInput');
+  if (!fileInput.files.length) return alert('Choose a photo first.');
+
+  const statusEl = document.getElementById('segmentStatus');
+  currentImageBase64 = await fileToBase64(fileInput.files[0]);
+
+  const concepts = document.getElementById('conceptsInput').value
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  setStatus(statusEl, 'queued');
+  const res = await fetch(`${API}/v1/segment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      image: { image_base64: currentImageBase64 },
+      mode: 'text',
+      concepts,
+    }),
+  });
+  const { job_id } = await res.json();
+
+  try {
+    const result = await pollJob(job_id, statusEl);
+    detections = result.detections;
+    renderCanvas();
+    renderDetections();
+  } catch (e) {
+    setStatus(statusEl, 'failed', e.message);
+  }
+};
+
+function renderCanvas() {
+  const canvas = document.getElementById('canvas');
+  const img = new Image();
+  img.onload = () => {
+    currentImageEl = img;
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.style.display = 'block';
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    detections.forEach((d, i) => {
+      const [x1, y1, x2, y2] = d.bbox;
+      ctx.strokeStyle = i === selectedDetection ? '#7fd858' : '#4a7a38';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    });
+  };
+  img.src = `data:image/jpeg;base64,${currentImageBase64}`;
+}
+
+function renderDetections() {
+  const el = document.getElementById('detections');
+  el.innerHTML = '';
+  detections.forEach((d, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'detection-chip' + (i === selectedDetection ? ' selected' : '');
+    chip.textContent = `${d.concept} (${(d.confidence * 100).toFixed(0)}%)`;
+    chip.onclick = () => {
+      selectedDetection = i;
+      renderCanvas();
+      renderDetections();
+      document.getElementById('matchBtn').disabled = false;
+    };
+    el.appendChild(chip);
+  });
+}
+
+// ── Step 2: Match ─────────────────────────────────────────────────────────
+document.getElementById('matchBtn').onclick = async () => {
+  if (selectedDetection === null) return;
+  const statusEl = document.getElementById('matchStatus');
+  const d = detections[selectedDetection];
+
+  setStatus(statusEl, 'running');
+  const res = await fetch(`${API}/v1/match`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      image: { image_base64: currentImageBase64 },
+      mask: { image_url: d.mask_url },
+      top_k: 6,
+    }),
+  });
+  const data = await res.json();
+  setStatus(statusEl, 'done', `${data.matches.length} results`);
+  renderProducts(data.matches);
+};
+
+function renderProducts(matches) {
+  const el = document.getElementById('products');
+  el.innerHTML = '';
+  matches.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.innerHTML = `
+      <img src="${p.image_url}">
+      <div>${p.name}</div>
+      <div class="sim">${(p.similarity * 100).toFixed(0)}% match</div>
+    `;
+    card.onclick = () => {
+      selectedProduct = p;
+      document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      document.getElementById('replaceBtn').disabled = false;
+    };
+    el.appendChild(card);
+  });
+}
+
+// ── Step 3: Replace ──────────────────────────────────────────────────────
+document.getElementById('modePrompt').onclick = () => setMode('prompt');
+document.getElementById('modeReference').onclick = () => setMode('reference');
+
+function setMode(mode) {
+  replaceMode = mode;
+  document.getElementById('modePrompt').classList.toggle('active', mode === 'prompt');
+  document.getElementById('modeReference').classList.toggle('active', mode === 'reference');
+  document.getElementById('promptFields').style.display = mode === 'prompt' ? 'block' : 'none';
+  document.getElementById('referenceFields').style.display = mode === 'reference' ? 'block' : 'none';
+  document.getElementById('replaceBtn').disabled = (mode === 'reference' && !selectedProduct);
+}
+
+document.getElementById('replaceBtn').onclick = async () => {
+  if (selectedDetection === null) return alert('Segment and select an object first.');
+  const statusEl = document.getElementById('replaceStatus');
+  const d = detections[selectedDetection];
+
+  const body = {
+    image: { image_base64: currentImageBase64 },
+    mask: { image_url: d.mask_url },
+    mode: replaceMode,
+  };
+  if (replaceMode === 'prompt') {
+    body.prompt = document.getElementById('promptInput').value;
+    body.negative_prompt = document.getElementById('negPromptInput').value;
+  } else {
+    body.product_id = selectedProduct.product_id;
+    body.ip_scale = parseFloat(document.getElementById('ipScaleInput').value);
+  }
+
+  setStatus(statusEl, 'queued');
+  const res = await fetch(`${API}/v1/replace`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const { job_id } = await res.json();
+
+  try {
+    const result = await pollJob(job_id, statusEl);
+    document.getElementById('resultArea').style.display = 'block';
+    document.getElementById('resultImg').src = result.result_url;
+    document.getElementById('elapsedHint').textContent =
+      `${result.mode} mode · ${result.elapsed_seconds}s`;
+  } catch (e) {
+    setStatus(statusEl, 'failed', e.message);
+  }
+};
+
+setMode('prompt');
+</script>
+
+</body>
+</html>

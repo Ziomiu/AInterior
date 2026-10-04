@@ -12,6 +12,7 @@ A team project developed for our engineering thesis. The application focuses on 
     * Inpainting
     * Outpainting
     * Canvas
+    * Furniture replacement (click segmentation, mask refinement, prompt/reference generation)
 - User accounts system with gallery, to store all created pictures, and administrator panel
 - Many features to support architects:
     * Visual Prompting - visual representation of text prompts
@@ -90,6 +91,22 @@ or
 1. ssh -L 80:localhost:80 -J <login_bastion>@bastion.ii.agh.edu.pl <login_pc>@<ip_pc>
 
 ### How to run tests
+
+### Furniture Replacement
+
+The authenticated workflow is available in **Workflows -> Furniture Replace**,
+with mask correction, Balanced/Quality profiles, catalog references and explicit
+save to Gallery. The optional Compose profile is `furniture`; configure
+`FURNITURE_SERVICE_KEY` outside Git before enabling it. Backend proxy settings
+are `FURNITURE_SERVICE_URL` and `FURNITURE_SERVICE_KEY`.
+
+See [integration and staging](furniture-replace-service/INTEGRATION.md) and
+[measured GPU results](furniture-replace-service/LAB_RESULTS.md). The university
+staging uses a dedicated venv and test database without replacing the running
+main stack. Do not generate concurrently in ComfyUI and the Quality profile on
+the shared RTX 2080 Ti.
+
+### Frontend Tests
 
 1. ``` cd frontend ```
 2. ```  sudo apt install npm ```

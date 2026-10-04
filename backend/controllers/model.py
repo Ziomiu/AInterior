@@ -1,9 +1,9 @@
 import os
 import json
-import time
+import asyncio
 import uuid
 import torch
-import requests
+import httpx
 from PIL import Image, ImageOps
 from dotenv import load_dotenv
 
@@ -17,6 +17,11 @@ from utils.saving_images_helpers import image_to_string, string_to_image, save_i
 from schemas.generation import TextToImageRequest, Img2ImgRequest, ControlNetRequest, Inpainting, Outpainting
 
 models= APIRouter()
+
+COMFYUI_URL = os.getenv("COMFYUI_URL", "http://comfyui:8188").rstrip("/")
+COMFYUI_QUEUE_TIMEOUT_SECONDS = 20.0
+COMFYUI_REQUEST_TIMEOUT_SECONDS = 10.0
+COMFYUI_GENERATION_TIMEOUT_SECONDS = 180.0
 
 model_versions = {
     '1.5' : 'stable-diffusion-1-5.safetensors',
@@ -54,66 +59,80 @@ model_version_to_megapixels = {
 }
 
 
-def get_image(prompt_json):
+async def get_image(prompt_json):
     queue_payload = {'prompt': prompt_json}
 
-    queue_response = requests.post('http://comfyui:8188/prompt', json=queue_payload)
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(COMFYUI_REQUEST_TIMEOUT_SECONDS, connect=3.0)
+    ) as client:
+        try:
+            queue_response = await asyncio.wait_for(
+                client.post(f'{COMFYUI_URL}/prompt', json=queue_payload),
+                timeout=COMFYUI_QUEUE_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError as error:
+            raise HTTPException(status_code=504, detail='Timed out queueing prompt.') from error
+        except httpx.RequestError as error:
+            raise HTTPException(status_code=502, detail='Unable to reach ComfyUI.') from error
 
-    if not queue_response.ok:
-        raise HTTPException(status_code=404, detail='Error queueing prompt')
-    
-    queue_response_json = queue_response.json()
-        
-    if 'prompt_id' not in queue_response_json:
-        raise HTTPException(status_code=404, detail='Error obraining prompt_id')
-    
-    prompt_id = queue_response_json['prompt_id']
-    
-    # Poll the endpoint until a non-empty response is received
-    max_attempts = 60
-    for attempt in range(max_attempts):
-        image_response = requests.get(f'http://comfyui:8188/history/{prompt_id}')
-        if image_response.ok and image_response.content and image_response.content != b'{}':
-            break
-        time.sleep(1)
-    else:
-        raise HTTPException(status_code=504, detail='Timeout waiting for image generation response.')
+        if not queue_response.is_success:
+            raise HTTPException(status_code=502, detail='Error queueing prompt')
+
+        queue_response_json = queue_response.json()
+
+        if 'prompt_id' not in queue_response_json:
+            raise HTTPException(status_code=502, detail='ComfyUI response did not include a prompt_id.')
+
+        prompt_id = queue_response_json['prompt_id']
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + COMFYUI_GENERATION_TIMEOUT_SECONDS
+
+        while loop.time() < deadline:
+            remaining = deadline - loop.time()
+            try:
+                image_response = await asyncio.wait_for(
+                    client.get(f'{COMFYUI_URL}/history/{prompt_id}'),
+                    timeout=min(COMFYUI_REQUEST_TIMEOUT_SECONDS, remaining),
+                )
+            except asyncio.TimeoutError:
+                continue
+            except httpx.RequestError as error:
+                raise HTTPException(status_code=502, detail='Unable to read generation status from ComfyUI.') from error
+
+            if image_response.is_success and image_response.content and image_response.content != b'{}':
+                break
+            await asyncio.sleep(min(1.0, max(0.0, deadline - loop.time())))
+        else:
+            raise HTTPException(status_code=504, detail='Timeout waiting for image generation response.')
      
-    image_response_json = image_response.json()
+        image_response_json = image_response.json()
 
-    # Dynamically find the SaveImage node in the outputs
-    if prompt_id not in image_response_json:
-        raise HTTPException(status_code=404, detail=f'No history found for prompt_id: {prompt_id}')
-    
-    outputs = image_response_json[prompt_id].get('outputs', {})
-    if not outputs:
-        raise HTTPException(status_code=404, detail='No outputs found in workflow response')
-    
-    # print(outputs, flush=True)
-    
-    # Find the first SaveImage node output
-    filename = None
-    for node_id, node_output in outputs.items():
-        if 'images' in node_output and len(node_output['images']) > 0:
-            filename = node_output['images'][0]['filename']
-            break
-    
-    if not filename:
-        # Debug information
-        print(f"Debug - Available outputs: {list(outputs.keys())}")
-        print(f"Debug - Outputs content: {outputs}")
-        raise HTTPException(status_code=404, detail='No image output found in workflow response')
-    
-    image_path = os.path.join('output_images', filename)
-    
-    if not os.path.exists(image_path):
-       raise HTTPException(status_code=404, detail=f"Image file {image_path} not found")
+        if prompt_id not in image_response_json:
+            raise HTTPException(status_code=404, detail=f'No history found for prompt_id: {prompt_id}')
 
-    image = Image.open(image_path)
-    image_base64 = image_to_string(image)
+        outputs = image_response_json[prompt_id].get('outputs', {})
+        if not outputs:
+            raise HTTPException(status_code=404, detail='No outputs found in workflow response')
+
+        filename = None
+        for node_output in outputs.values():
+            if 'images' in node_output and len(node_output['images']) > 0:
+                filename = node_output['images'][0]['filename']
+                break
+
+        if not filename:
+            raise HTTPException(status_code=404, detail='No image output found in workflow response')
     
-    return image_base64
+        image_path = os.path.join('output_images', filename)
     
+        if not os.path.exists(image_path):
+            raise HTTPException(status_code=404, detail=f"Image file {image_path} not found")
+
+        def encode_image():
+            with Image.open(image_path) as image:
+                return image_to_string(image)
+
+        return await asyncio.to_thread(encode_image)
 
 @models.post('/generate/text-to-image')
 async def text_to_image(textToImageRequest: TextToImageRequest, current_user: dict = Depends(get_current_user)):
@@ -143,7 +162,7 @@ async def text_to_image(textToImageRequest: TextToImageRequest, current_user: di
     prompt_json['6']['inputs']['text'] = textToImageRequest.prompt
     prompt_json['7']['inputs']['text'] = textToImageRequest.negative_prompt    
     
-    image_base64 = get_image(prompt_json)
+    image_base64 = await get_image(prompt_json)
             
     await save_image_record(
         user_id=str(current_user["_id"]),
@@ -205,7 +224,7 @@ async def edit_image(img2ImgRequest: Img2ImgRequest, current_user: dict = Depend
     prompt_json['6']['inputs']['text'] = img2ImgRequest.prompt
     prompt_json['7']['inputs']['text'] = img2ImgRequest.negative_prompt    
     
-    image_base64 = get_image(prompt_json)
+    image_base64 = await get_image(prompt_json)
 
     await save_image_record(
         user_id=str(current_user["_id"]),
@@ -271,7 +290,7 @@ async def control_net(controlNetRequest: ControlNetRequest, current_user: dict =
     prompt_json['6']['inputs']['text'] = controlNetRequest.prompt
     prompt_json['7']['inputs']['text'] = controlNetRequest.negative_prompt    
     
-    image_base64 = get_image(prompt_json)
+    image_base64 = await get_image(prompt_json)
 
     await save_image_record(
         user_id=str(current_user["_id"]),
@@ -342,7 +361,7 @@ async def image_inpainting(inpainting: Inpainting, current_user: dict = Depends(
     prompt_json['6']['inputs']['text'] = inpainting.prompt
     prompt_json['7']['inputs']['text'] = inpainting.negative_prompt
     
-    image_base64 = get_image(prompt_json)
+    image_base64 = await get_image(prompt_json)
     
     try:
         await save_image_record(
@@ -416,7 +435,7 @@ async def image_outpainting(outpainting: Outpainting, current_user: dict = Depen
     prompt_json['6']['inputs']['text'] = outpainting.prompt
     prompt_json['7']['inputs']['text'] = outpainting.negative_prompt
     
-    image_base64 = get_image(prompt_json)
+    image_base64 = await get_image(prompt_json)
     
     try:
         await save_image_record(

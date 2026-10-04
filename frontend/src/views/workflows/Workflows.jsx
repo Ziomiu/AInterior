@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { FaFileImage, FaImages, FaMagic, FaBorderAll, FaExpandArrowsAlt, FaDrawPolygon, FaCouch } from "react-icons/fa";
+import { MdPanoramaHorizontal } from "react-icons/md";
 
 import Card from "../../components/ui/Card";
 
@@ -10,6 +11,7 @@ const basicWorkflows = [
 ];
 
 const advancedWorkflows = [
+  { path: "panorama-360", icon: MdPanoramaHorizontal, title: "360 Image", description: "Generate and explore an immersive exhibition-space panorama." },
   { path: "furniture-replace", icon: FaCouch, title: "Furniture Replace", description: "Replace selected furniture with a prompt or catalog reference." },
   { path: "control-net", icon: FaBorderAll, title: "Control Net", description: "Guided image generation using structural input like pose, depth or edges." },
   { path: "outpainting", icon: FaExpandArrowsAlt, title: "Outpainting", description: "Extend your image beyond its borders while keeping the original style and details intact." },

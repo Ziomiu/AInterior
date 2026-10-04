@@ -1,4 +1,5 @@
 import axios from "axios";
+import { lazy, Suspense } from "react";
 
 import { store } from "./store";
 import { Provider } from "react-redux";
@@ -33,6 +34,8 @@ import AdminRoute from "./components/AdminRoute";
 import UserDetails from "./views/adminPanel/UserDetails";
 import Error from "./views/error/Error";
 
+const Panorama360 = lazy(() => import("./views/workflows/panorama-360/Panorama360"));
+
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -60,6 +63,7 @@ const App = () => (
               <Route path="/views/account/register" element={<Navigate to="/views/landing" replace state={{ authModal: "register" }} />} />
               <Route path="/views/landing" element={<LandingPage />} />
               <Route path="/views/workflows/text-to-image" element={<PrivateRoute><TextToImage /></PrivateRoute>} />
+              <Route path="/views/workflows/panorama-360" element={<PrivateRoute><Suspense fallback={<div role="status" className="grid min-h-[50vh] place-items-center text-muted">Loading workflow...</div>}><Panorama360 /></Suspense></PrivateRoute>} />
               <Route path="/views/workflows/image-to-image" element={<PrivateRoute><ImageToImage /></PrivateRoute>} />
               <Route path="/views/workflows/inpainting" element={<PrivateRoute><Inpainting /></PrivateRoute>} />
               <Route path="/views/workflows/outpainting" element={<PrivateRoute><Outpainting /></PrivateRoute>} />

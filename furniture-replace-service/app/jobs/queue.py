@@ -19,8 +19,12 @@ import time
 import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from typing import Any, Callable
 
+from fastapi import HTTPException
+
+from app.config import settings
 from app.schemas import JobStatus
 
 logger = logging.getLogger("job_queue")
@@ -29,7 +33,7 @@ logger = logging.getLogger("job_queue")
 class Job:
     def __init__(self, job_id: str, fn: Callable[[], dict[str, Any]]):
         self.id = job_id
-        self.fn = fn
+        self.fn: Callable[[], dict[str, Any]] | None = fn
         self.status: JobStatus = JobStatus.queued
         self.result: dict[str, Any] | None = None
         self.error: str | None = None
@@ -56,17 +60,21 @@ class JobQueue:
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="infer")
 
     def start(self) -> None:
-        self._queue = asyncio.Queue()
+        self._queue = asyncio.Queue(maxsize=settings.max_queued_jobs)
         self._worker = asyncio.create_task(self._run())
         logger.info("Job queue worker started")
 
     async def stop(self) -> None:
         if self._worker:
             self._worker.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._worker
         self._executor.shutdown(wait=False, cancel_futures=True)
 
     def submit(self, fn: Callable[[], dict[str, Any]]) -> Job:
         assert self._queue is not None, "Queue not started"
+        if self._queue.full():
+            raise HTTPException(503, "Inference queue is full; retry later")
         job = Job(str(uuid.uuid4()), fn)
         self._jobs[job.id] = job
         self._queue.put_nowait(job)
@@ -77,6 +85,13 @@ class JobQueue:
 
     def depth(self) -> int:
         return self._queue.qsize() if self._queue else 0
+
+    def _trim_history(self) -> None:
+        for job_id in list(self._jobs):
+            if len(self._jobs) <= settings.max_job_history:
+                break
+            if self._jobs[job_id].status in (JobStatus.done, JobStatus.failed):
+                del self._jobs[job_id]
 
     async def _run(self) -> None:
         assert self._queue is not None
@@ -95,8 +110,10 @@ class JobQueue:
                 job.error = str(exc)
                 logger.error(f"[{job.id}] failed: {exc}\n{traceback.format_exc()}")
             finally:
+                job.fn = None
                 job.updated_at = time.time()
                 self._queue.task_done()
+                self._trim_history()
 
 
 job_queue = JobQueue()

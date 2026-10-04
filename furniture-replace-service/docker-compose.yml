@@ -6,13 +6,21 @@ services:
   furniture-replace:
     build: .
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${SERVICE_PORT:-8000}:8000"
     volumes:
       - ./data:/srv/data          # model weights + results + catalog images persist here
       - ./frontend:/srv/frontend  # edit the console without rebuilding
     environment:
-      - DEVICE=cuda
+      - DEVICE=${DEVICE:-cuda}
       - QDRANT_URL=http://qdrant:6333
+      - DATA_DIR=/srv/data
+      - SAM2_MODEL=${SAM2_MODEL:-facebook/sam2.1-hiera-large}
+      - IP_ADAPTER_WEIGHT=${IP_ADAPTER_WEIGHT:-ip-adapter_sd15.bin}
+      - PROMPT_INPAINT_MODEL=${PROMPT_INPAINT_MODEL:-}
+      - PROMPT_CLEAN_FIRST=${PROMPT_CLEAN_FIRST:-false}
+      - INPAINT_CROP_PADDING=${INPAINT_CROP_PADDING:-0}
+      - MODEL_IDLE_OFFLOAD_SECONDS=${MODEL_IDLE_OFFLOAD_SECONDS:-30}
+      - SERVICE_API_KEY=${SERVICE_API_KEY:-}
       # - SERVICE_API_KEY=change-me
     deploy:
       resources:
@@ -28,7 +36,7 @@ services:
   qdrant:
     image: qdrant/qdrant:v1.12.1
     ports:
-      - "6333:6333"   # REST/dashboard — helpful during development
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"   # REST/dashboard — helpful during development
     volumes:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped

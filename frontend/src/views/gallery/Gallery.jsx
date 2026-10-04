@@ -136,7 +136,7 @@ const Gallery = () => {
                 <p><b>Model:</b> {img.model}</p>
                 <p><b>Mode:</b> {img.mode}</p>
                 <p><b>Size:</b> {img.width} × {img.height}</p>
-                {img.mode != "inpainting" && img.mode != "text2img" && (
+                {img.mode != "inpainting" && img.mode != "text2img" && img.mode != "furniture-replace" && (
                   <p><b>Scaling mode:</b> {img.scaling_mode}</p>
                 )}
                 <p><b>Prompt:</b> {img.prompt}</p>
@@ -179,6 +179,12 @@ const Gallery = () => {
                   onClick={() => handleRedirect(img, "inpainting")}
                 >
                   Use in Inpainting
+                </button>
+                <button
+                  className="bg-foreground/5 hover:bg-foreground/10 text-xs text-foreground rounded p-1.5 transition-colors cursor-pointer"
+                  onClick={() => handleRedirect(img, "furniture-replace")}
+                >
+                  Use in Furniture Replace
                 </button>
                 <button
                   className="bg-foreground/5 hover:bg-foreground/10 text-xs text-foreground rounded p-1.5 transition-colors cursor-pointer"

@@ -23,11 +23,16 @@ class Settings(BaseSettings):
     )
     # How long a heavy model may sit idle on the GPU before the reaper offloads it.
     model_idle_offload_seconds: int = 180
+    max_queued_jobs: int = Field(16, ge=1)
+    max_job_history: int = Field(128, ge=1)
 
     # ── Storage ──────────────────────────────────────────────────────────────
     # A single data root keeps weights, results and catalog images together so a
     # single Docker volume persists everything (see docker-compose.yml).
     data_dir: Path = Path("./data")
+    max_image_bytes: int = Field(20 * 1024 * 1024, ge=1)
+    max_image_side: int = Field(4096, ge=1)
+    max_image_pixels: int = Field(16_777_216, ge=1)
 
     # ── Vector DB ────────────────────────────────────────────────────────────
     qdrant_url: str = "http://localhost:6333"
@@ -50,7 +55,9 @@ class Settings(BaseSettings):
 
     # Replace / reference mode: SD1.5-inpainting + IP-Adapter for exact-product
     # fidelity from a catalog photo.
-    sd_inpaint_model: str = "runwayml/stable-diffusion-inpainting"
+    sd_inpaint_model: str = "stable-diffusion-v1-5/stable-diffusion-inpainting"
+    sd_inpaint_variant: str | None = "fp16"
+    prompt_inpaint_model: str | None = None
     ip_adapter_repo: str = "h94/IP-Adapter"
     ip_adapter_subfolder: str = "models"
     ip_adapter_weight: str = "ip-adapter_sd15.bin"
@@ -59,6 +66,8 @@ class Settings(BaseSettings):
     default_ip_scale: float = 0.85
     default_steps: int = 30
     default_guidance_scale: float = 7.5
+    inpaint_crop_padding: int = Field(0, ge=0, le=512)
+    prompt_clean_first: bool = False
 
     # ── Derived paths (created on startup) ───────────────────────────────────
     @property

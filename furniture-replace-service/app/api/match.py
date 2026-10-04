@@ -13,7 +13,7 @@ router = APIRouter(prefix="/v1", tags=["match"])
 
 
 @router.post("/match", response_model=MatchResult)
-async def match(req: MatchRequest) -> MatchResult:
+def match(req: MatchRequest) -> MatchResult:
     image = load_rgb(req.image)
     mask = load_mask(req.mask, size=image.size)
 

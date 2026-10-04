@@ -6,9 +6,10 @@ whoever wires up the AInterior frontend later.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ── Shared / image input ─────────────────────────────────────────────────────
@@ -25,6 +26,12 @@ class ImageRef(BaseModel):
     """
     image_base64: str | None = None
     image_url: str | None = None
+
+    @model_validator(mode="after")
+    def validate_source(self):
+        if bool(self.image_base64) == bool(self.image_url):
+            raise ValueError("Set exactly one of image_base64 or image_url")
+        return self
 
 
 class JobStatus(str, Enum):
@@ -49,9 +56,9 @@ class JobResponse(BaseModel):
 # offline furniture-library builder, not this interactive path — see scripts/.)
 
 class Point(BaseModel):
-    x: int
-    y: int
-    label: int = Field(1, description="1 = include (foreground), 0 = exclude (background)")
+    x: int = Field(ge=0)
+    y: int = Field(ge=0)
+    label: Literal[0, 1] = Field(1, description="1 = include (foreground), 0 = exclude (background)")
 
 
 class SegmentRequest(BaseModel):
@@ -75,7 +82,7 @@ class SegmentResult(BaseModel):
 class MatchRequest(BaseModel):
     image: ImageRef
     mask: ImageRef  # binary mask isolating the object to match
-    top_k: int = 5
+    top_k: int = Field(5, ge=1, le=50)
     category_filter: str | None = None
 
 
@@ -110,13 +117,17 @@ class ReplaceRequest(BaseModel):
     negative_prompt: str | None = None
 
     # mode == reference
-    product_id: str | None = Field(
+    product_id: UUID | None = Field(
         default=None, description="Catalog product to use as IP-Adapter reference"
     )
-    ip_scale: float | None = None  # overrides config default if set
+    ip_scale: float | None = Field(None, ge=0, le=1.5)
 
-    steps: int | None = None
-    guidance_scale: float | None = None
+    steps: int | None = Field(None, ge=1, le=80)
+    guidance_scale: float | None = Field(None, ge=0, le=20)
+    seed: int = Field(0, ge=0, le=2**32 - 1)
+    quality: Literal["balanced", "quality"] = "balanced"
+    mask_growth: int = Field(6, ge=0, le=32)
+    edge_blend: int = Field(2, ge=0, le=8)
 
 
 class ReplaceResult(BaseModel):
@@ -134,7 +145,7 @@ class ProductIngestRequest(BaseModel):
     category: str
     price: float | None = None
     currency: str = "PLN"
-    product_id: str | None = Field(
+    product_id: UUID | None = Field(
         default=None, description="Provide to upsert; omitted -> generated"
     )
 
@@ -155,6 +166,7 @@ class CatalogListResponse(BaseModel):
 class ModelStatus(BaseModel):
     name: str
     resident_on: str  # "gpu" | "cpu" | "not_loaded"
+    backend: str | None = None
     last_used_seconds_ago: float | None = None
 
 
@@ -165,3 +177,4 @@ class HealthResponse(BaseModel):
     vram_reserved_mb: float | None = None
     models: list[ModelStatus]
     queue_depth: int
+    inference_config: dict[str, Any] = Field(default_factory=dict)

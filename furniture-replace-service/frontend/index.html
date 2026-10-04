@@ -293,7 +293,15 @@ function renderProducts(matches) {
   matches.forEach(p => {
     const card = document.createElement('div');
     card.className = 'product-card';
-    card.innerHTML = `<img src="${API}${p.image_url}"><div>${p.name}</div><div class="sim">${(p.similarity*100).toFixed(0)}% match</div>`;
+    const image = document.createElement('img');
+    image.src = `${API}${p.image_url}`;
+    image.alt = p.name;
+    const name = document.createElement('div');
+    name.textContent = p.name;
+    const similarity = document.createElement('div');
+    similarity.className = 'sim';
+    similarity.textContent = `${(p.similarity*100).toFixed(0)}% match`;
+    card.append(image, name, similarity);
     card.onclick = () => {
       selectedProduct = p;
       document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));

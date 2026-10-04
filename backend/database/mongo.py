@@ -9,5 +9,4 @@ load_dotenv(env_file)
 MONGO_URL = getenv("MONGO_URL", "mongodb://localhost:27017")
 
 client = AsyncIOMotorClient(MONGO_URL)
-db = client["pracainz"]
-print("MONGO_URL =", MONGO_URL)
+db = client[getenv("MONGO_DATABASE", "pracainz")]

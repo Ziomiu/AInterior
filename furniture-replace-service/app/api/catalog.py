@@ -21,9 +21,9 @@ router = APIRouter(prefix="/v1/catalog", tags=["catalog"])
 
 
 @router.post("/products", response_model=ProductIngestResponse)
-async def ingest_product(req: ProductIngestRequest) -> ProductIngestResponse:
+def ingest_product(req: ProductIngestRequest) -> ProductIngestResponse:
     image = load_rgb(req.image)
-    product_id = req.product_id or uuid.uuid4().hex
+    product_id = str(req.product_id) if req.product_id is not None else uuid.uuid4().hex
 
     # Persist the product image so /match and /replace (reference mode) can serve
     # and re-read it as a local static file.
@@ -53,7 +53,7 @@ async def ingest_product(req: ProductIngestRequest) -> ProductIngestResponse:
 
 
 @router.get("/products", response_model=CatalogListResponse)
-async def list_products(limit: int = 200) -> CatalogListResponse:
+def list_products(limit: int = 200) -> CatalogListResponse:
     rows = catalog_store.list_all(limit=limit)
     products = [
         ProductMatch(

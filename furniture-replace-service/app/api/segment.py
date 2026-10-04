@@ -1,9 +1,10 @@
 """POST /v1/segment — click-driven SAM 2.1. Async (returns a job)."""
 from __future__ import annotations
 
+import asyncio
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.config import settings
 from app.jobs.queue import job_queue
@@ -18,9 +19,11 @@ router = APIRouter(prefix="/v1", tags=["segment"])
 
 @router.post("/segment")
 async def segment(req: SegmentRequest):
-    image = load_rgb(req.image)
+    image = await asyncio.to_thread(load_rgb, req.image)
     points = [(p.x, p.y) for p in req.points]
     labels = [p.label for p in req.points]
+    if not any(labels) or any(x >= image.width or y >= image.height for x, y in points):
+        raise HTTPException(400, "Clicks must be inside the image and include a foreground point")
 
     def task() -> dict:
         with model_manager.use("segmenter") as seg:

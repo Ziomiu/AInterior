@@ -29,37 +29,62 @@ _LOCAL_PREFIXES: dict[str, Path] = {
 def _decode_base64(data: str) -> Image.Image:
     if "," in data and data.strip().startswith("data:"):
         data = data.split(",", 1)[1]  # tolerate a full data URL
+    if len(data) > 4 * ((settings.max_image_bytes + 2) // 3):
+        raise HTTPException(413, "Image exceeds the byte limit")
     try:
         raw = base64.b64decode(data, validate=True)
     except (binascii.Error, ValueError) as exc:
         raise HTTPException(400, f"Invalid base64 image: {exc}") from exc
+    if len(raw) > settings.max_image_bytes:
+        raise HTTPException(413, "Image exceeds the byte limit")
     return Image.open(io.BytesIO(raw))
 
 
 def _load_url(url: str) -> Image.Image:
     for prefix, root in _LOCAL_PREFIXES.items():
         if url.startswith(prefix):
-            local = root / url[len(prefix):]
+            root = root.resolve()
+            local = (root / url[len(prefix):]).resolve()
+            if not local.is_relative_to(root):
+                raise HTTPException(403, "Image path is outside its data directory")
             if not local.is_file():
                 raise HTTPException(404, f"Local image not found: {url}")
+            if local.stat().st_size > settings.max_image_bytes:
+                raise HTTPException(413, "Image exceeds the byte limit")
             return Image.open(local)
 
     if not url.startswith(("http://", "https://")):
         raise HTTPException(400, f"Unsupported image_url scheme: {url}")
     try:
-        resp = requests.get(url, timeout=20)
-        resp.raise_for_status()
+        with requests.get(url, timeout=20, stream=True) as resp:
+            resp.raise_for_status()
+            raw = io.BytesIO()
+            for chunk in resp.iter_content(chunk_size=65536):
+                if raw.tell() + len(chunk) > settings.max_image_bytes:
+                    raise HTTPException(413, "Image exceeds the byte limit")
+                raw.write(chunk)
     except requests.RequestException as exc:
         raise HTTPException(400, f"Could not fetch image_url: {exc}") from exc
-    return Image.open(io.BytesIO(resp.content))
+    raw.seek(0)
+    return Image.open(raw)
 
 
 def _resolve(ref: ImageRef) -> Image.Image:
-    if ref.image_base64:
-        return _decode_base64(ref.image_base64)
-    if ref.image_url:
-        return _load_url(ref.image_url)
-    raise HTTPException(400, "ImageRef must set image_base64 or image_url")
+    try:
+        if ref.image_base64:
+            image = _decode_base64(ref.image_base64)
+        elif ref.image_url:
+            image = _load_url(ref.image_url)
+        else:
+            raise HTTPException(400, "ImageRef must set image_base64 or image_url")
+        width, height = image.size
+        if max(width, height) > settings.max_image_side or width * height > settings.max_image_pixels:
+            image.close()
+            raise HTTPException(413, "Image exceeds the dimension or pixel limit")
+        image.load()
+        return image
+    except (OSError, ValueError, Image.DecompressionBombError) as exc:
+        raise HTTPException(400, "Invalid or unsafe image") from exc
 
 
 def load_rgb(ref: ImageRef) -> Image.Image:

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import secrets
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import catalog, health, jobs, match, replace, segment
@@ -24,7 +26,7 @@ async def _idle_reaper_loop():
     """Periodically offloads an idle heavy model from GPU. See ModelManager.idle_reaper_tick."""
     while True:
         await asyncio.sleep(30)
-        model_manager.idle_reaper_tick()
+        await asyncio.to_thread(model_manager.idle_reaper_tick)
 
 
 @asynccontextmanager
@@ -66,8 +68,8 @@ app = FastAPI(
 async def check_service_key(request: Request, call_next):
     if settings.service_api_key and request.url.path.startswith("/v1"):
         key = request.headers.get("X-Service-Key")
-        if key != settings.service_api_key:
-            raise HTTPException(401, "Missing or invalid X-Service-Key header")
+        if not secrets.compare_digest((key or "").encode(), settings.service_api_key.encode()):
+            return JSONResponse(status_code=401, content={"detail": "Missing or invalid X-Service-Key header"})
     return await call_next(request)
 
 
@@ -79,6 +81,6 @@ app.include_router(jobs.router)
 app.include_router(health.router)
 
 # Static: generated results, catalog images, and the test console.
-app.mount("/results", StaticFiles(directory=str(settings.results_dir)), name="results")
-app.mount("/catalog-images", StaticFiles(directory=str(settings.catalog_images_dir)), name="catalog-images")
+app.mount("/results", StaticFiles(directory=str(settings.results_dir), check_dir=False), name="results")
+app.mount("/catalog-images", StaticFiles(directory=str(settings.catalog_images_dir), check_dir=False), name="catalog-images")
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

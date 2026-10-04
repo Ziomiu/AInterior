@@ -1,5 +1,12 @@
 # Furniture Replacement Service
 
+Lab validation, model candidates and integration plan: [LAB_PLAN.md](LAB_PLAN.md).
+Measured GPU results and quality limitations: [LAB_RESULTS.md](LAB_RESULTS.md).
+Main-app workflow, auth and Gallery integration: [INTEGRATION.md](INTEGRATION.md).
+The standalone console remains a lab harness; the integrated route is
+`/views/workflows/furniture-replace`.
+IP-Adapter provides reference conditioning, not guaranteed exact-product identity.
+
 Standalone microservice: **click-segment → match to catalog → replace** for
 interior photos. Built independent of the rest of the AInterior repo — talks to
 it only over HTTP.
@@ -21,8 +28,8 @@ deliberate deviations from the original brief (both requested):
 |---|---|---|
 | Interactive segmentation | **SAM 2.1, click prompts** | Precise, deterministic, no text-model ambiguity; user points at the object |
 | Furniture-library cutouts (offline) | **SAM 3 / SAM 2 auto / rembg** | Background removal for better embeddings + reference fidelity |
-| Generic replacement (text prompt) | **LaMa → BrushNet**, two-stage | SSIM 0.919 / LPIPS 0.116 — best of 5 approaches benchmarked |
-| Exact-product replacement (catalog photo) | **IP-Adapter** on SD1.5 Inpainting, `ip_scale≈0.85` | Text can't reproduce a *specific* product; image conditioning does |
+| Generic replacement (text prompt) | **SD1.5 inpainting** baseline; LaMa -> BrushNet optional | LaMa cleaning is opt-in (`PROMPT_CLEAN_FIRST=true`); research metrics are not evidence for the stock fallback |
+| Reference-conditioned replacement (catalog photo) | **IP-Adapter** on SD1.5 Inpainting, `ip_scale≈0.85` | Image conditioning encourages similarity; it does not guarantee exact product identity |
 | Catalog matching | **CLIP embeddings + Qdrant** | Standard, fast, swappable vector DB |
 | Generation engine | **`diffusers` directly**, no ComfyUI | ComfyUI is a GUI tool; a JSON-workflow layer adds latency for no benefit here |
 
@@ -108,6 +115,11 @@ runs end-to-end (see `app/models/inpainting.py`).
 `run.sh` is safe to run next to the main AInterior stack — separate ports and its
 own weight cache under `./data`; it only shares the physical GPU.
 
+Ports bind to localhost. The two applications do not share a GPU scheduler:
+avoid concurrent ComfyUI/replacement generations until admission control exists.
+The validated lab deployment uses `bash run_lab.sh` with a dedicated venv because
+Docker unpacking stalled on the lab host; see [LAB_PLAN.md](LAB_PLAN.md).
+
 ### Build the furniture library
 
 Requirements:
@@ -148,7 +160,8 @@ uvicorn app.main:app --reload            # expects Qdrant at QDRANT_URL
 ```
 
 First request after a cold start is slow (weights load disk → CPU RAM once);
-`./run.sh --prefetch` does this ahead of time. Every request after only pays the
+`./run.sh --prefetch` downloads weights ahead of time but does not warm the API
+process. Every request after loading only pays the
 CPU→GPU swap, not disk I/O.
 
 ---
@@ -175,11 +188,11 @@ Add both services (`furniture-replace`, `qdrant`) into the main
 
 ## 7. Definition of done (this pass)
 
-- [x] `docker compose up` starts the service + Qdrant cleanly
+- [ ] `docker compose up` validated on the lab host (unpacking stalled; venv + Qdrant binary validated instead)
 - [x] `POST /v1/segment` returns a mask for a clicked point
 - [x] `POST /v1/catalog/products` builds a Qdrant collection
 - [x] `POST /v1/match` returns sensible top-K for a masked object
-- [x] `POST /v1/replace` (`mode=prompt`) runs LaMa→BrushNet (or SD1.5 fallback)
+- [x] `POST /v1/replace` (`mode=prompt`) runs SD1.5 fallback; LaMa is opt-in, BrushNet fork not validated
 - [x] `POST /v1/replace` (`mode=reference`) runs IP-Adapter from a product photo
 - [x] `GET /v1/health` shows correct model swapping
 - [x] `frontend/index.html` exercises the whole flow manually

@@ -17,14 +17,16 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger("prefetch")
 
 
-def _step(name: str, fn) -> None:
+def _step(name: str, fn) -> bool:
     t0 = time.time()
     logger.info("↓ %s …", name)
     try:
         fn()
         logger.info("  ✓ %s (%.0fs)", name, time.time() - t0)
+        return True
     except Exception as exc:  # noqa: BLE001
         logger.warning("  ✗ %s failed: %s", name, exc)
+        return False
 
 
 def main() -> int:
@@ -32,11 +34,16 @@ def main() -> int:
     from app.models.matching import _load_clip
     from app.models.segmentation import _load_segmenter
 
-    _step("SAM 2.1 (segmentation)", _load_segmenter)
-    _step("CLIP (matching)", _load_clip)
-    _step("LaMa (prompt stage 1)", _load_lama)
-    _step("BrushNet / SD1.5-inpaint (prompt stage 2)", _load_brushnet)
-    _step("SD1.5-inpaint + IP-Adapter (reference)", _load_ip_adapter)
+    results = [
+        _step("SAM 2.1 (segmentation)", _load_segmenter),
+        _step("CLIP (matching)", _load_clip),
+        _step("LaMa (prompt stage 1)", _load_lama),
+        _step("BrushNet / SD1.5-inpaint (prompt stage 2)", _load_brushnet),
+        _step("SD1.5-inpaint + IP-Adapter (reference)", _load_ip_adapter),
+    ]
+    if not all(results):
+        logger.error("Prefetch incomplete; resolve failed downloads before running benchmarks.")
+        return 1
 
     logger.info("Done. Weights cached under data/weights/ — first request is now warm.")
     return 0

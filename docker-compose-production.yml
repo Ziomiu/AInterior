@@ -36,6 +36,8 @@ services:
       - output_images:/backend/output_images
     environment:
       ENV_FILE: .env
+      FURNITURE_SERVICE_URL: ${FURNITURE_SERVICE_URL:-http://furniture-replace:8000}
+      FURNITURE_SERVICE_KEY: ${FURNITURE_SERVICE_KEY:-}
     working_dir: /backend
     command: gunicorn main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:5555 --timeout 360
     depends_on:
@@ -86,6 +88,35 @@ services:
     runtime: 
       nvidia
 
+  furniture-replace:
+    profiles: [furniture]
+    build: ./furniture-replace-service
+    volumes:
+      - ./furniture-replace-service/data:/srv/data
+    environment:
+      DATA_DIR: /srv/data
+      QDRANT_URL: http://furniture-qdrant:6333
+      SERVICE_API_KEY: ${FURNITURE_SERVICE_KEY:-}
+      MODEL_IDLE_OFFLOAD_SECONDS: 30
+    command: ["sh", "-c", "test -n \"$$SERVICE_API_KEY\" || { echo 'Set FURNITURE_SERVICE_KEY'; exit 1; }; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    depends_on:
+      - furniture-qdrant
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  furniture-qdrant:
+    profiles: [furniture]
+    image: qdrant/qdrant:v1.12.1
+    volumes:
+      - furniture_qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
   mongo:
     image: mongo:latest
     ports:
@@ -134,3 +165,4 @@ volumes:
   db_data:
   input_images:
   output_images:
+  furniture_qdrant_data:

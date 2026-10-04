@@ -4,6 +4,7 @@ FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/srv \
     PIP_NO_CACHE_DIR=1 \
     HF_HOME=/srv/data/weights/hf \
     TORCH_HOME=/srv/data/weights/torch \
@@ -25,10 +26,13 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # SAM 2.1 from source (not on PyPI).
-RUN pip install "git+https://github.com/facebookresearch/sam2.git"
+COPY constraints.txt .
+RUN SAM2_BUILD_CUDA=0 pip install -c constraints.txt "git+https://github.com/facebookresearch/sam2.git@2b90b9f5ceec907a1c18123530e92e794ad901a4"
 
 COPY app ./app
 COPY frontend ./frontend
+COPY scripts ./scripts
+COPY tests ./tests
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

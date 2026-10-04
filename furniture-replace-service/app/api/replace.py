@@ -5,10 +5,11 @@ import asyncio
 import time
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.catalog.store import catalog_store
 from app.config import settings
+from app.gpu_queue import ticket_id_from_request
 from app.jobs.queue import job_queue
 from app.pipeline import run_prompt_replace, run_reference_replace
 from app.schemas import ImageRef, ReplaceMode, ReplaceRequest
@@ -18,7 +19,8 @@ router = APIRouter(prefix="/v1", tags=["replace"])
 
 
 @router.post("/replace")
-async def replace(req: ReplaceRequest):
+async def replace(req: ReplaceRequest, request: Request):
+    gpu_ticket_id = ticket_id_from_request(request)
     image = await asyncio.to_thread(load_rgb, req.image)
     mask = await asyncio.to_thread(load_mask, req.mask, size=image.size)
     if mask_to_bbox(mask) is None:
@@ -73,5 +75,5 @@ async def replace(req: ReplaceRequest):
             "quality": req.quality,
         }
 
-    job = job_queue.submit(task)
+    job = job_queue.submit(task, gpu_ticket_id)
     return {"job_id": job.id, "status": job.status}

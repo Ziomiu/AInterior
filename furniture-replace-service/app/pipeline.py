@@ -58,7 +58,6 @@ def run_prompt_replace(
     """LaMa clean -> BrushNet paint. Returns (final_composited, stage1_cleaned)."""
     mask_d = dilate_mask(mask, iterations=mask_growth)
 
-    # Stage 1 — remove the old object so BrushNet starts from a clean plate.
     cleaned_full = None
     if settings.prompt_clean_first:
         with model_manager.use("lama") as lama:
@@ -69,7 +68,6 @@ def run_prompt_replace(
     cleaned = (cleaned_full if cleaned_full is not None else image).resize((ww, wh), Image.LANCZOS)
     mask_work = mask_d.resize((ww, wh), Image.NEAREST)
 
-    # Stage 2 — synthesize the new object described by the prompt.
     with model_manager.use("prompt_quality" if quality == "quality" else "brushnet") as inpainter:
         generator = torch.Generator(device=model_manager.device).manual_seed(seed)
         result = inpainter.inpaint(

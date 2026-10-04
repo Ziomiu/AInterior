@@ -111,7 +111,6 @@ class ModelManager:
                 m.last_used = time.time()
                 return m.instance
 
-            # heavy model path — enforce the "only one on GPU" invariant
             with self._gpu_lock:
                 if self._current_heavy_on_gpu != name:
                     self._evict_current_heavy()

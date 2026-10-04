@@ -11,8 +11,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-# ── Shared / image input ─────────────────────────────────────────────────────
-
 class ImageRef(BaseModel):
     """
     One of three ways to point this service at an image. Exactly one should be set.
@@ -40,8 +38,6 @@ class JobResponse(BaseModel):
     result: dict[str, Any] | None = None
     error: str | None = None
 
-
-# ── /v1/segment ───────────────────────────────────────────────────────────────
 
 class SegmentMode(str, Enum):
     text = "text"      # SAM 3 — automatic, no user interaction
@@ -75,8 +71,6 @@ class SegmentResult(BaseModel):
     image_height: int
 
 
-# ── /v1/match ─────────────────────────────────────────────────────────────────
-
 class MatchRequest(BaseModel):
     image: ImageRef
     mask: ImageRef  # binary mask isolating the object to match
@@ -98,11 +92,9 @@ class MatchResult(BaseModel):
     matches: list[ProductMatch]
 
 
-# ── /v1/replace ───────────────────────────────────────────────────────────────
-
 class ReplaceMode(str, Enum):
-    prompt = "prompt"        # text-guided — LaMa -> BrushNet
-    reference = "reference"  # image-guided — IP-Adapter, exact product fidelity
+    prompt = "prompt"
+    reference = "reference"
 
 
 class ReplaceRequest(BaseModel):
@@ -110,11 +102,9 @@ class ReplaceRequest(BaseModel):
     mask: ImageRef
     mode: ReplaceMode
 
-    # mode == prompt
     prompt: str | None = None
     negative_prompt: str | None = None
 
-    # mode == reference
     product_id: str | None = Field(
         default=None, description="Catalog product to use as IP-Adapter reference"
     )
@@ -131,14 +121,10 @@ class ReplaceResult(BaseModel):
     elapsed_seconds: float
 
 
-# ── /v1/catalog/products ──────────────────────────────────────────────────────
-
 class ProductIngestResponse(BaseModel):
     product_id: str
     indexed: bool
 
-
-# ── /v1/health ──────────────────────────────────────────────────────────────
 
 class ModelStatus(BaseModel):
     name: str

@@ -4,6 +4,7 @@ import binascii
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 import hashlib
+import logging
 import os
 import re
 from uuid import UUID, uuid4
@@ -19,21 +20,34 @@ from schemas.furniture import (
     FurnitureSegmentRequest,
 )
 from utils.auth_helpers import get_current_user
+from utils import gpu_queue
 
 furniture_router = APIRouter()
+logger = logging.getLogger(__name__)
 jobs_collection = db["furniture_jobs"]
 images_collection = db["generated_images"]
 products_collection = db["furniture_products"]
+_GPU_QUEUE_ACQUIRE_TIMEOUT_SECONDS = float(os.getenv("GPU_QUEUE_ACQUIRE_TIMEOUT_SECONDS", "900"))
+_GPU_SERVICE_TIMEOUT_SECONDS = _GPU_QUEUE_ACQUIRE_TIMEOUT_SECONDS + 120
 _ASSET_PATH = re.compile(r"/(?:results/(?:masks/)?|catalog-images/)[a-f0-9-]{32,36}(?:_stage1)?\.png\Z")
-_MAX_ASSET_BYTES = 8 * 1024 * 1024
+_MAX_ASSET_BYTES = 64 * 1024 * 1024
 
 
-async def _service(method: str, path: str, **kwargs):
+async def _service(
+    method: str,
+    path: str,
+    gpu_ticket_id: str | None = None,
+    timeout: float = 60,
+    **kwargs,
+):
     url = os.getenv("FURNITURE_SERVICE_URL", "http://furniture-replace:8000").rstrip("/")
     key = os.getenv("FURNITURE_SERVICE_KEY", "")
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=5), follow_redirects=False) as client:
-            response = await client.request(method, url + path, headers={"X-Service-Key": key}, **kwargs)
+        headers = {"X-Service-Key": key}
+        if gpu_ticket_id is not None:
+            headers["X-GPU-Ticket"] = gpu_ticket_id
+        async with httpx.AsyncClient(timeout=httpx.Timeout(timeout, connect=5), follow_redirects=False) as client:
+            response = await client.request(method, url + path, headers=headers, **kwargs)
         if response.status_code in (400, 413, 422):
             raise HTTPException(response.status_code, response.json().get("detail", "Invalid replacement request"))
         if response.status_code >= 400:
@@ -41,6 +55,32 @@ async def _service(method: str, path: str, **kwargs):
         return response.json()
     except (httpx.HTTPError, ValueError) as exc:
         raise HTTPException(503, "Furniture service unavailable") from exc
+
+
+async def _new_gpu_ticket(user_id, operation: str) -> str:
+    try:
+        return await gpu_queue.enqueue(str(user_id), f"furniture:{operation}")
+    except gpu_queue.QueueFullError as exc:
+        raise HTTPException(429, str(exc), headers={"Retry-After": "30"}) from exc
+
+
+async def _cancel_gpu_ticket(ticket_id: str, reason: str) -> None:
+    try:
+        await gpu_queue.cancel(ticket_id, reason)
+    except Exception:
+        logger.exception("Failed to cancel unsubmitted GPU ticket %s", ticket_id)
+
+
+async def _gpu_service(method: str, path: str, current_user: dict, operation: str, **kwargs):
+    ticket_id = await _new_gpu_ticket(current_user["_id"], operation)
+    try:
+        return await _service(
+            method, path, gpu_ticket_id=ticket_id,
+            timeout=_GPU_SERVICE_TIMEOUT_SECONDS, **kwargs,
+        )
+    except BaseException:
+        await _cancel_gpu_ticket(ticket_id, "upstream_request_failed")
+        raise
 
 
 async def _asset(path: str) -> str:
@@ -121,11 +161,16 @@ async def _mask(req, current_user):
 
 async def _submit(operation: str, payload: dict, current_user: dict, dimensions, metadata=None):
     await jobs_collection.create_index("expires_at", expireAfterSeconds=0)
-    upstream = await _service("POST", f"/v1/{operation}", json=payload)
+    ticket_id = await _new_gpu_ticket(current_user["_id"], operation)
     try:
+        upstream = await _service("POST", f"/v1/{operation}", gpu_ticket_id=ticket_id, json=payload)
         job_id = str(UUID(upstream["job_id"]))
     except (KeyError, ValueError, TypeError) as exc:
+        await _cancel_gpu_ticket(ticket_id, "invalid_upstream_job")
         raise HTTPException(502, "Invalid furniture job ID") from exc
+    except BaseException:
+        await _cancel_gpu_ticket(ticket_id, "upstream_submit_failed")
+        raise
     now = datetime.now(timezone.utc)
     await jobs_collection.insert_one({
         "_id": job_id, "user_id": current_user["_id"], "operation": operation,
@@ -182,6 +227,17 @@ async def _products(rows, current_user, limit=20):
     return visible
 
 
+async def _visible_product_ids(current_user):
+    query = {
+        "$and": [
+            {"$or": [{"shared": True}, {"user_id": current_user["_id"]}]},
+            {"$or": [{"status": "ready"}, {"status": {"$exists": False}}]},
+        ]
+    }
+    cursor = products_collection.find(query, {"_id": 1})
+    return [str(product["_id"]) async for product in cursor]
+
+
 @furniture_router.get("/products")
 async def products(current_user: dict = Depends(get_current_user)):
     data = await _service("GET", "/v1/catalog/products", params={"limit": 200})
@@ -193,7 +249,7 @@ async def ingest(req: FurnitureProductRequest, current_user: dict = Depends(get_
     await asyncio.to_thread(_validate_image, req.image)
     product_id = str(uuid4())
     await products_collection.insert_one({"_id": product_id, "user_id": current_user["_id"], "status": "pending"})
-    result = await _service("POST", "/v1/catalog/products", json={
+    result = await _gpu_service("POST", "/v1/catalog/products", current_user, "catalog-ingest", json={
         "image": {"image_base64": req.image}, "name": req.name, "category": req.category, "product_id": product_id,
     })
     try:
@@ -209,9 +265,12 @@ async def ingest(req: FurnitureProductRequest, current_user: dict = Depends(get_
 @furniture_router.post("/match")
 async def match(req: FurnitureMatchRequest, current_user: dict = Depends(get_current_user)):
     mask, _ = await _mask(req, current_user)
-    data = await _service("POST", "/v1/match", json={
+    product_ids = await _visible_product_ids(current_user)
+    if not product_ids:
+        return {"matches": []}
+    data = await _gpu_service("POST", "/v1/match", current_user, "match", json={
         "image": {"image_base64": req.image}, "mask": mask,
-        "top_k": 50, "category_filter": req.category_filter,
+        "top_k": 50, "category_filter": req.category_filter, "product_ids": product_ids,
     })
     return {"matches": await _products(data["matches"], current_user, req.top_k)}
 

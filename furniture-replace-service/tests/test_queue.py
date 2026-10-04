@@ -6,6 +6,7 @@ import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+from contextlib import nullcontext
 
 
 class JobStatus(str, Enum):
@@ -28,7 +29,14 @@ def load_queue():
     with patch.dict(sys.modules, {
         "fastapi": SimpleNamespace(HTTPException=HTTPException),
         "app.schemas": SimpleNamespace(JobStatus=JobStatus),
-        "app.config": SimpleNamespace(settings=SimpleNamespace(max_queued_jobs=2, max_job_history=2)),
+        "app.config": SimpleNamespace(settings=SimpleNamespace(
+            max_queued_jobs=2, max_job_history=2, gpu_queue_heartbeat_seconds=1,
+        )),
+        "app.gpu_queue": SimpleNamespace(
+            cancel_job_ticket=lambda ticket_id: asyncio.sleep(0),
+            gpu_slot=lambda ticket_id: nullcontext(),
+            heartbeat_waiting_job_ticket=lambda ticket_id: asyncio.sleep(0, result=False),
+        ),
     }):
         spec.loader.exec_module(module)
     return module
@@ -65,6 +73,24 @@ class QueueTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(self.queue._queue.join(), timeout=2)
         self.assertIsNone(self.queue.get(jobs[0].id))
         self.assertIsNotNone(self.queue.get(jobs[-1].id))
+
+    async def test_ticket_heartbeat_stops_after_shared_queue_claims_ticket(self):
+        module = load_queue()
+        calls = 0
+
+        async def heartbeat(ticket_id):
+            nonlocal calls
+            calls += 1
+            return calls < 3
+
+        async def no_wait(_seconds):
+            return None
+
+        with patch.object(module, "heartbeat_waiting_job_ticket", heartbeat), \
+             patch.object(module.asyncio, "sleep", no_wait):
+            await module.JobQueue()._keep_ticket_alive("ticket")
+
+        self.assertEqual(calls, 3)
 
 
 if __name__ == "__main__":

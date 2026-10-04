@@ -47,7 +47,7 @@ services:
       context: ./comfyui
       dockerfile: Dockerfile
     ports:
-      - 8188:8188
+      - 127.0.0.1:8188:8188
     working_dir: /comfyui
     command: python main.py --listen 0.0.0.0
     volumes:
@@ -72,6 +72,7 @@ services:
     environment:
       DATA_DIR: /srv/data
       QDRANT_URL: http://furniture-qdrant:6333
+      GPU_QUEUE_URL: http://backend:5555/internal/gpu-queue
       SERVICE_API_KEY: ${FURNITURE_SERVICE_KEY:-}
       MODEL_IDLE_OFFLOAD_SECONDS: 30
     command: ["sh", "-c", "test -n \"$$SERVICE_API_KEY\" || { echo 'Set FURNITURE_SERVICE_KEY'; exit 1; }; exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

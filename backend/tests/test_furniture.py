@@ -25,7 +25,10 @@ collection = SimpleNamespace(
     find_one=AsyncMock(), update_one=AsyncMock(), insert_one=AsyncMock(), create_index=AsyncMock(),
 )
 with patch.dict(sys.modules, {
-    "database.mongo": SimpleNamespace(db={"furniture_jobs": collection, "generated_images": collection, "furniture_products": collection}),
+    "database.mongo": SimpleNamespace(db={
+        "furniture_jobs": collection, "generated_images": collection,
+        "furniture_products": collection, "gpu_queue_state": collection,
+    }),
     "utils.auth_helpers": SimpleNamespace(get_current_user=authenticate),
 }):
     from controllers import furniture
@@ -50,7 +53,13 @@ class FurnitureTests(unittest.TestCase):
         )
         self.images = SimpleNamespace(find_one=AsyncMock(return_value=None), update_one=AsyncMock())
         self.products = SimpleNamespace(find_one=AsyncMock(return_value=None), insert_one=AsyncMock(), update_one=AsyncMock())
+        self.new_ticket = AsyncMock(return_value="test-ticket")
+        self.cancel_ticket = AsyncMock()
         self.patches = [patch.object(furniture, "jobs_collection", self.jobs), patch.object(furniture, "images_collection", self.images), patch.object(furniture, "products_collection", self.products)]
+        self.patches.extend([
+            patch.object(furniture, "_new_gpu_ticket", self.new_ticket),
+            patch.object(furniture, "_cancel_gpu_ticket", self.cancel_ticket),
+        ])
         for item in self.patches:
             item.start()
 
@@ -82,11 +91,13 @@ class FurnitureTests(unittest.TestCase):
 
     def test_segment_tracks_owner_and_does_not_store_input_image(self):
         job_id = str(uuid4())
-        with patch.object(furniture, "_service", AsyncMock(return_value={"job_id": job_id})):
+        with patch.object(furniture, "_service", AsyncMock(return_value={"job_id": job_id})) as service:
             response = self.client.post("/furniture/segment", json={
                 "image": fixture_image(), "points": [{"x": 5, "y": 5}],
             })
         self.assertEqual(response.status_code, 200)
+        self.new_ticket.assert_awaited_once_with(self.user["_id"], "segment")
+        self.assertEqual(service.await_args.kwargs["gpu_ticket_id"], "test-ticket")
         record = self.jobs.insert_one.call_args.args[0]
         self.assertEqual(record["user_id"], self.user["_id"])
         self.assertEqual(record["dimensions"], [32, 24])
@@ -129,11 +140,14 @@ class FurnitureTests(unittest.TestCase):
         async def service(method, path, **kwargs):
             return {"product_id": UUID(kwargs["json"]["product_id"]).hex}
 
-        with patch.object(furniture, "_service", service):
+        with patch.object(furniture, "_service", AsyncMock(side_effect=service)) as service_call:
             response = self.client.post("/furniture/products", json={
                 "image": fixture_image(), "name": "chair", "category": "armchair",
             })
         self.assertEqual(response.status_code, 200)
+        self.new_ticket.assert_awaited_once_with(self.user["_id"], "catalog-ingest")
+        self.assertEqual(service_call.await_args.kwargs["gpu_ticket_id"], "test-ticket")
+        self.assertGreaterEqual(service_call.await_args.kwargs["timeout"], 1020)
         product_id = self.products.insert_one.call_args.args[0]["_id"]
         self.assertEqual(response.json()["product_id"], product_id)
         self.products.update_one.assert_awaited_once_with(

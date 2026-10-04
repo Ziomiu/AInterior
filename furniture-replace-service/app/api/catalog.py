@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.catalog.store import catalog_store
 from app.config import settings
+from app.gpu_queue import gpu_slot, ticket_id_from_request
 from app.models.manager import model_manager
 from app.models.matching import ClipEmbedder
 from app.schemas import (
@@ -21,7 +22,8 @@ router = APIRouter(prefix="/v1/catalog", tags=["catalog"])
 
 
 @router.post("/products", response_model=ProductIngestResponse)
-def ingest_product(req: ProductIngestRequest) -> ProductIngestResponse:
+def ingest_product(req: ProductIngestRequest, request: Request) -> ProductIngestResponse:
+    gpu_ticket_id = ticket_id_from_request(request)
     image = load_rgb(req.image)
     product_id = str(req.product_id) if req.product_id is not None else uuid.uuid4().hex
 
@@ -30,9 +32,10 @@ def ingest_product(req: ProductIngestRequest) -> ProductIngestResponse:
     save_png(image, settings.catalog_images_dir / f"{product_id}.png")
     image_url = f"/catalog-images/{product_id}.png"
 
-    with model_manager.use("clip") as clip:
-        assert isinstance(clip, ClipEmbedder)
-        vector = clip.embed_image(image)
+    with gpu_slot(gpu_ticket_id):
+        with model_manager.use("clip") as clip:
+            assert isinstance(clip, ClipEmbedder)
+            vector = clip.embed_image(image)
 
     try:
         catalog_store.upsert(

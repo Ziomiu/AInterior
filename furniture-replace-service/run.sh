@@ -20,7 +20,6 @@ if [[ "${1:-}" == "down" ]]; then
   exit 0
 fi
 
-# ── Preflight ────────────────────────────────────────────────────────────────
 command -v docker >/dev/null || { echo "ERROR: docker not found"; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo "ERROR: 'docker compose' plugin not found"; exit 1; }
 
@@ -33,7 +32,6 @@ fi
 [[ -f .env ]] || { cp .env.example .env; echo "Created .env from .env.example"; }
 mkdir -p data/weights data/results data/catalog-images data/raw data/cutouts
 
-# ── Up ───────────────────────────────────────────────────────────────────────
 echo "Building & starting furniture-replace + qdrant …"
 docker compose up -d --build
 

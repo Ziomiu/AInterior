@@ -80,7 +80,6 @@ app.include_router(catalog.router)
 app.include_router(jobs.router)
 app.include_router(health.router)
 
-# Static: generated results, catalog images, and the test console.
 app.mount("/results", StaticFiles(directory=str(settings.results_dir), check_dir=False), name="results")
 app.mount("/catalog-images", StaticFiles(directory=str(settings.catalog_images_dir), check_dir=False), name="catalog-images")
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

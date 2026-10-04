@@ -34,8 +34,6 @@ def _dtype() -> torch.dtype:
     return torch.float16 if (settings.device == "cuda" and torch.cuda.is_available()) else torch.float32
 
 
-# ── LaMa (stage 1 of prompt mode) ────────────────────────────────────────────
-
 class LaMaCleaner:
     """Wraps simple-lama-inpainting so it fits the CPU<->GPU movement contract."""
 
@@ -60,8 +58,6 @@ def _load_lama() -> LaMaCleaner:
     lama = SimpleLama(device=torch.device("cpu"))
     return LaMaCleaner(lama)
 
-
-# ── BrushNet (stage 2 of prompt mode) ────────────────────────────────────────
 
 class PromptInpainter:
     def __init__(self, pipe, backend: str) -> None:
@@ -136,8 +132,6 @@ def _load_brushnet():
     pipe.enable_attention_slicing()
     return PromptInpainter(pipe, "brushnet")
 
-
-# ── IP-Adapter (reference mode) ──────────────────────────────────────────────
 
 def _load_ip_adapter():
     from diffusers import AutoPipelineForInpainting

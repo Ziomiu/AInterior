@@ -4,9 +4,10 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.config import settings
+from app.gpu_queue import ticket_id_from_request
 from app.jobs.queue import job_queue
 from app.models.manager import model_manager
 from app.models.segmentation import Segmenter
@@ -18,7 +19,8 @@ router = APIRouter(prefix="/v1", tags=["segment"])
 
 
 @router.post("/segment")
-async def segment(req: SegmentRequest):
+async def segment(req: SegmentRequest, request: Request):
+    gpu_ticket_id = ticket_id_from_request(request)
     image = await asyncio.to_thread(load_rgb, req.image)
     points = [(p.x, p.y) for p in req.points]
     labels = [p.label for p in req.points]
@@ -44,5 +46,5 @@ async def segment(req: SegmentRequest):
             "image_height": image.height,
         }
 
-    job = job_queue.submit(task)
+    job = job_queue.submit(task, gpu_ticket_id)
     return {"job_id": job.id, "status": job.status}

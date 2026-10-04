@@ -12,8 +12,6 @@ from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
 
 
-# ── Shared / image input ─────────────────────────────────────────────────────
-
 class ImageRef(BaseModel):
     """
     One of three ways to point this service at an image. Exactly one should be set.
@@ -50,7 +48,6 @@ class JobResponse(BaseModel):
     error: str | None = None
 
 
-# ── /v1/segment ───────────────────────────────────────────────────────────────
 # Segmentation is click-driven: the user clicks the object to replace and SAM 2.1
 # returns its mask. No text prompts. (SAM 3 / auto segmentation is reserved for the
 # offline furniture-library builder, not this interactive path — see scripts/.)
@@ -77,13 +74,12 @@ class SegmentResult(BaseModel):
     image_height: int
 
 
-# ── /v1/match ─────────────────────────────────────────────────────────────────
-
 class MatchRequest(BaseModel):
     image: ImageRef
     mask: ImageRef  # binary mask isolating the object to match
     top_k: int = Field(5, ge=1, le=50)
     category_filter: str | None = None
+    product_ids: list[str] | None = None
 
 
 class ProductMatch(BaseModel):
@@ -100,11 +96,9 @@ class MatchResult(BaseModel):
     matches: list[ProductMatch]
 
 
-# ── /v1/replace ───────────────────────────────────────────────────────────────
-
 class ReplaceMode(str, Enum):
-    prompt = "prompt"        # text-guided — LaMa -> BrushNet
-    reference = "reference"  # image-guided — IP-Adapter, exact product fidelity
+    prompt = "prompt"
+    reference = "reference"
 
 
 class ReplaceRequest(BaseModel):
@@ -112,11 +106,9 @@ class ReplaceRequest(BaseModel):
     mask: ImageRef
     mode: ReplaceMode
 
-    # mode == prompt
     prompt: str | None = None
     negative_prompt: str | None = None
 
-    # mode == reference
     product_id: UUID | None = Field(
         default=None, description="Catalog product to use as IP-Adapter reference"
     )
@@ -136,8 +128,6 @@ class ReplaceResult(BaseModel):
     mode: ReplaceMode
     elapsed_seconds: float
 
-
-# ── /v1/catalog/products ──────────────────────────────────────────────────────
 
 class ProductIngestRequest(BaseModel):
     image: ImageRef
@@ -160,8 +150,6 @@ class CatalogListResponse(BaseModel):
     products: list[ProductMatch]
     count: int
 
-
-# ── /v1/health ──────────────────────────────────────────────────────────────
 
 class ModelStatus(BaseModel):
     name: str

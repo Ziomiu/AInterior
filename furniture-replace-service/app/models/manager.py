@@ -6,11 +6,10 @@ IP-Adapter+SD1.5 don't comfortably fit on the reference hardware (8-24GB VRAM) a
 the same time. Reloading a model from disk on every request is also unacceptable
 (multi-second cold load).
 
-Solution: every model's weights are loaded from disk exactly ONCE, into CPU RAM,
-at first use. From then on this manager only ever moves tensors between CPU and
-GPU (~0.3-0.5s for these sizes), never touches disk again. At most one "heavy"
-model sits on the GPU at any moment. Light models (CLIP) stay GPU-resident
-permanently since they're cheap and used on almost every request.
+Models load lazily and use a bounded, least-recently-used heavy-model cache.
+Evicted models reload from disk on their next use. At most one heavy model sits
+on the GPU at any moment. CLIP stays outside the heavy-model cache. Actual load
+and transfer costs depend on the model and available host memory.
 
 This works because the job queue (app/jobs/queue.py) processes one job at a time
 — there is never a concurrent request for two different heavy models, so "one
@@ -19,6 +18,7 @@ to the hardware.
 """
 from __future__ import annotations
 
+import gc
 import logging
 import threading
 import time
@@ -74,11 +74,30 @@ class ModelManager:
 
     def _ensure_loaded_on_cpu(self, m: ManagedModel) -> None:
         if m.instance is None:
+            self._make_cache_room(m.name)
             logger.info(f"[{m.name}] cold load from disk (first use)...")
             t0 = time.time()
             m.instance = m.loader()  # loader builds on CPU
             m.device = "cpu"
             logger.info(f"[{m.name}] loaded in {time.time() - t0:.1f}s (resident on CPU)")
+
+    def _make_cache_room(self, name: str) -> None:
+        if name not in HEAVY_MODELS:
+            return
+        loaded = [model for model in self._registry.values()
+                  if model.name in HEAVY_MODELS and model.instance is not None and model.name != name]
+        while len(loaded) >= settings.max_loaded_heavy_models:
+            oldest = min(loaded, key=lambda model: model.last_used)
+            if self._current_heavy_on_gpu == oldest.name:
+                self._evict_current_heavy()
+            with oldest.lock:
+                oldest.instance = None
+                oldest.device = "not_loaded"
+            loaded.remove(oldest)
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            logger.info(f"[{oldest.name}] released to bound host memory")
 
     def _evict_current_heavy(self) -> None:
         if self._current_heavy_on_gpu is None:

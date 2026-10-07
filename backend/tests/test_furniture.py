@@ -182,6 +182,90 @@ class FurnitureTests(unittest.TestCase):
             response = self.client.get(f"/furniture/jobs/{job_id}")
         self.assertEqual(response.status_code, 502)
 
+    def test_live_known_stages_are_persisted_and_returned(self):
+        job_id = str(uuid4())
+        self.jobs.find_one.return_value = {
+            "_id": job_id, "user_id": self.user["_id"], "operation": "replace", "status": "running",
+        }
+        for stage in sorted(furniture._KNOWN_STAGES - {"done", "failed"}):
+            with self.subTest(stage=stage), patch.object(furniture, "_service", AsyncMock(return_value={
+                "status": "running", "stage": stage,
+            })), patch.object(furniture, "_asset", AsyncMock()) as asset:
+                response = self.client.get(f"/furniture/jobs/{job_id}")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["stage"], stage)
+                self.assertIsNone(response.json()["result"])
+                self.jobs.update_one.assert_awaited_with(
+                    {"_id": job_id, "user_id": self.user["_id"]},
+                    {"$set": {"status": "running", "stage": stage}},
+                )
+                asset.assert_not_awaited()
+
+    def test_missing_or_unknown_stage_is_optional(self):
+        job_id = str(uuid4())
+        self.jobs.find_one.return_value = {
+            "_id": job_id, "user_id": self.user["_id"], "operation": "segment", "status": "running",
+        }
+        for upstream in ({"status": "running"}, {"status": "running", "stage": "unexpected"},
+                         {"status": "running", "stage": ["loading"]}, {"status": "running", "stage": None}):
+            with self.subTest(upstream=upstream), patch.object(furniture, "_service", AsyncMock(return_value=upstream)):
+                response = self.client.get(f"/furniture/jobs/{job_id}")
+                self.assertEqual(response.status_code, 200)
+                self.assertNotIn("stage", response.json())
+                self.assertEqual(self.jobs.update_one.await_args.args[1], {"$set": {"status": "running"}})
+
+    def test_segment_optional_classification_and_review_are_preserved(self):
+        job_id = str(uuid4())
+        self.jobs.find_one.return_value = {
+            "_id": job_id, "user_id": self.user["_id"], "operation": "segment", "status": "running",
+        }
+        classification = {
+            "category": "chair", "label": "chair", "confidence": 0.61,
+            "uncertain": False, "confidence_kind": "relative_clip_score",
+        }
+        for review in (False, True):
+            service_result = {
+                "mask_url": f"/results/masks/{uuid4().hex}.png", "bbox": [4, 4, 16, 16], "score": 0.93,
+                "classification": classification, "mask_review_required": review,
+            }
+            with self.subTest(review=review), patch.object(furniture, "_service", AsyncMock(return_value={
+                "status": "done", "stage": "done", "result": service_result,
+            })), patch.object(furniture, "_asset", AsyncMock(return_value="mask")):
+                response = self.client.get(f"/furniture/jobs/{job_id}")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["stage"], "done")
+                self.assertEqual(response.json()["result"], {
+                    "mask": "mask", "bbox": [4, 4, 16, 16], "score": 0.93,
+                    "classification": classification, "mask_review_required": review,
+                })
+                self.assertEqual(self.jobs.update_one.await_args.args[1]["$set"]["service_result"], service_result)
+
+    def test_legacy_segment_results_do_not_require_optional_fields(self):
+        job_id = str(uuid4())
+        self.jobs.find_one.return_value = {
+            "_id": job_id, "user_id": self.user["_id"], "operation": "segment", "status": "done",
+            "service_result": {"mask_url": f"/results/masks/{uuid4().hex}.png", "bbox": [0, 0, 8, 8], "score": 0.9},
+        }
+        with patch.object(furniture, "_asset", AsyncMock(return_value="mask")), \
+             patch.object(furniture, "_service", AsyncMock()) as service:
+            response = self.client.get(f"/furniture/jobs/{job_id}")
+        self.assertEqual(response.json()["result"], {"mask": "mask", "bbox": [0, 0, 8, 8], "score": 0.9})
+        self.assertNotIn("stage", response.json())
+        service.assert_not_awaited()
+
+    def test_failed_job_returns_persisted_terminal_stage(self):
+        job_id = str(uuid4())
+        self.jobs.find_one.return_value = {
+            "_id": job_id, "user_id": self.user["_id"], "operation": "replace", "status": "running",
+        }
+        with patch.object(furniture, "_service", AsyncMock(return_value={
+            "status": "failed", "stage": "failed", "error": "inference failed",
+        })):
+            response = self.client.get(f"/furniture/jobs/{job_id}")
+        self.assertEqual(response.json()["stage"], "failed")
+        self.assertEqual(response.json()["error"], "inference failed")
+        self.assertIsNone(response.json()["result"])
+
     def test_save_uses_stable_id_and_insert_only_upsert(self):
         job_id, gallery_id = str(uuid4()), ObjectId()
         self.jobs.find_one.return_value = {

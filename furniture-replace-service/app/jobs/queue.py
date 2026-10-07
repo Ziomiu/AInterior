@@ -20,6 +20,7 @@ import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
+from contextvars import ContextVar
 from typing import Any, Callable
 
 from fastapi import HTTPException
@@ -37,6 +38,7 @@ class Job:
         self.fn: Callable[[], dict[str, Any]] | None = fn
         self.gpu_ticket_id = gpu_ticket_id
         self.status: JobStatus = JobStatus.queued
+        self.stage = "queued"
         self.result: dict[str, Any] | None = None
         self.error: str | None = None
         self.created_at = time.time()
@@ -47,11 +49,22 @@ class Job:
         return {
             "job_id": self.id,
             "status": self.status,
+            "stage": self.stage,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "result": self.result,
             "error": self.error,
         }
+
+
+_current_job: ContextVar[Job | None] = ContextVar("furniture_job", default=None)
+
+
+def report_stage(stage: str) -> None:
+    job = _current_job.get()
+    if job is not None:
+        job.stage = stage
+        job.updated_at = time.time()
 
 
 class JobQueue:
@@ -137,15 +150,23 @@ class JobQueue:
             logger.info(f"[{job.id}] running")
             try:
                 def execute_with_gpu_slot() -> dict[str, Any]:
-                    with gpu_slot(job.gpu_ticket_id):
-                        assert job.fn is not None
-                        return job.fn()
+                    token = _current_job.set(job)
+                    try:
+                        report_stage("waiting_for_gpu")
+                        with gpu_slot(job.gpu_ticket_id):
+                            report_stage("preparing")
+                            assert job.fn is not None
+                            return job.fn()
+                    finally:
+                        _current_job.reset(token)
 
                 job.result = await loop.run_in_executor(self._executor, execute_with_gpu_slot)
                 job.status = JobStatus.done
+                job.stage = "done"
                 logger.info(f"[{job.id}] done")
             except Exception as exc:  # noqa: BLE001 — surface any failure to the client
                 job.status = JobStatus.failed
+                job.stage = "failed"
                 job.error = str(exc)
                 logger.error(f"[{job.id}] failed: {exc}\n{traceback.format_exc()}")
             finally:

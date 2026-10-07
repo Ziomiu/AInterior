@@ -118,7 +118,7 @@ const FurnitureMaskCanvas = forwardRef(function FurnitureMaskCanvas({ image, mas
     if (disabled || !photoRef.current) return;
     const canvas = canvasRef.current;
     const position = imageCoordinates(event, canvas);
-    if (tool === "include" || tool === "exclude") {
+    if (tool === "select" || tool === "include" || tool === "exclude") {
       onPoint({ ...position, label: event.shiftKey || event.button === 2 || tool === "exclude" ? 0 : 1 });
       return;
     }

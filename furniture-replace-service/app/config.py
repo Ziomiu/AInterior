@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     gpu_queue_heartbeat_seconds: int = Field(5, ge=1)
     # How long a heavy model may sit idle on the GPU before the reaper offloads it.
     model_idle_offload_seconds: int = 180
+    max_loaded_heavy_models: int = Field(2, ge=1)
     max_queued_jobs: int = Field(16, ge=1)
     max_job_history: int = Field(128, ge=1)
 

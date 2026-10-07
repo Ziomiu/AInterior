@@ -42,6 +42,7 @@ class JobStatus(str, Enum):
 class JobResponse(BaseModel):
     job_id: str
     status: JobStatus
+    stage: str | None = None
     created_at: float
     updated_at: float
     result: dict[str, Any] | None = None
@@ -72,6 +73,8 @@ class SegmentResult(BaseModel):
     score: float                     # SAM 2.1 predicted IoU for the returned mask
     image_width: int
     image_height: int
+    classification: dict[str, Any] | None = None
+    mask_review_required: bool | None = None
 
 
 class MatchRequest(BaseModel):

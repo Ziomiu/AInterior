@@ -14,6 +14,7 @@ import torch
 from PIL import Image
 
 from app.config import settings
+from app.models.classification import CLASSIFICATION_LABELS, rank_categories
 from app.models.manager import model_manager
 
 logger = logging.getLogger("matching")
@@ -24,6 +25,7 @@ class ClipEmbedder:
         self.model = model
         self.processor = processor
         self.device = "cpu"
+        self._category_text_features: np.ndarray | None = None
 
     def to(self, device: str) -> "ClipEmbedder":
         self.model.to(device)
@@ -37,6 +39,20 @@ class ClipEmbedder:
         feats = self.model.get_image_features(**inputs)
         feats = feats / feats.norm(p=2, dim=-1, keepdim=True)
         return feats[0].cpu().numpy().astype(np.float32)
+
+
+    @torch.inference_mode()
+    def classify_object(self, image: Image.Image) -> dict:
+        image_features = self.embed_image(image)
+        if self._category_text_features is None:
+            inputs = self.processor(
+                text=[f"a photo of a {label}" for label in CLASSIFICATION_LABELS],
+                return_tensors="pt", padding=True,
+            ).to(self.device)
+            features = self.model.get_text_features(**inputs)
+            features = features / features.norm(p=2, dim=-1, keepdim=True)
+            self._category_text_features = features.cpu().numpy().astype(np.float32)
+        return rank_categories(self._category_text_features @ image_features)
 
 
 def _load_clip() -> ClipEmbedder:

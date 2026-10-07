@@ -74,6 +74,28 @@ class QueueTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(self.queue.get(jobs[0].id))
         self.assertIsNotNone(self.queue.get(jobs[-1].id))
 
+    async def test_stage_is_reported_from_the_active_worker_only(self):
+        module = load_queue()
+        queue = module.JobQueue()
+        queue.start()
+        observed = []
+
+        def task():
+            module.report_stage("generating")
+            observed.append(job.as_dict()["stage"])
+            return {}
+
+        try:
+            job = queue.submit(task)
+            self.assertEqual(job.as_dict()["stage"], "queued")
+            await asyncio.wait_for(queue._queue.join(), timeout=2)
+            self.assertEqual(observed, ["generating"])
+            self.assertEqual(job.as_dict()["stage"], "done")
+            module.report_stage("outside_worker")
+            self.assertEqual(job.stage, "done")
+        finally:
+            await queue.stop()
+
     async def test_ticket_heartbeat_stops_after_shared_queue_claims_ticket(self):
         module = load_queue()
         calls = 0

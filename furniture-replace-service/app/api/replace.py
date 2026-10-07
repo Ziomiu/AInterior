@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.catalog.store import catalog_store
 from app.config import settings
 from app.gpu_queue import ticket_id_from_request
-from app.jobs.queue import job_queue
+from app.jobs.queue import job_queue, report_stage
 from app.pipeline import run_prompt_replace, run_reference_replace
 from app.schemas import ImageRef, ReplaceMode, ReplaceRequest
 from app.utils.images import load_mask, load_rgb, mask_to_bbox, save_png
@@ -59,12 +59,14 @@ async def replace(req: ReplaceRequest, request: Request):
             final, stage1 = run_prompt_replace(image, mask, prompt, neg, steps, guidance,
                 seed=req.seed, quality=req.quality, mask_growth=req.mask_growth, edge_blend=req.edge_blend)
             if stage1 is not None:
+                report_stage("saving")
                 save_png(stage1, settings.results_dir / f"{result_id}_stage1.png")
                 stage1_url = f"/results/{result_id}_stage1.png"
         else:
             final = run_reference_replace(image, mask, product_image, ip_scale, steps, guidance,
                 seed=req.seed, prompt=prompt, mask_growth=req.mask_growth, edge_blend=req.edge_blend)
 
+        report_stage("saving")
         save_png(final, settings.results_dir / f"{result_id}.png")
         return {
             "result_url": f"/results/{result_id}.png",

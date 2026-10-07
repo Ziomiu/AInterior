@@ -12,6 +12,7 @@ import torch
 from PIL import Image, ImageFilter
 
 from app.config import settings
+from app.jobs.queue import report_stage
 from app.models.manager import model_manager
 from app.utils.images import dilate_mask
 
@@ -60,7 +61,9 @@ def run_prompt_replace(
 
     cleaned_full = None
     if settings.prompt_clean_first:
+        report_stage("loading")
         with model_manager.use("lama") as lama:
+            report_stage("cleaning")
             cleaned_full = lama(image, mask_d)
 
     w, h = image.size
@@ -68,8 +71,10 @@ def run_prompt_replace(
     cleaned = (cleaned_full if cleaned_full is not None else image).resize((ww, wh), Image.LANCZOS)
     mask_work = mask_d.resize((ww, wh), Image.NEAREST)
 
+    report_stage("loading")
     with model_manager.use("prompt_quality" if quality == "quality" else "brushnet") as inpainter:
         generator = torch.Generator(device=model_manager.device).manual_seed(seed)
+        report_stage("generating")
         result = inpainter.inpaint(
             image=cleaned,
             mask=mask_work,
@@ -80,6 +85,7 @@ def run_prompt_replace(
             generator=generator,
         )
 
+    report_stage("compositing")
     final = _composite(image, result, mask_d, edge_blend)
     return final, cleaned_full
 
@@ -103,9 +109,11 @@ def run_reference_replace(
     init = image.resize((ww, wh), Image.LANCZOS)
     mask_work = mask_d.resize((ww, wh), Image.NEAREST)
 
+    report_stage("loading")
     with model_manager.use("ip_adapter") as pipe:
         pipe.set_ip_adapter_scale(ip_scale)
         generator = torch.Generator(device=model_manager.device).manual_seed(seed)
+        report_stage("generating")
         result = pipe(
             prompt=prompt or "a piece of furniture, realistic, well lit, matching the room",
             negative_prompt="blurry, distorted, low quality, deformed",
@@ -121,4 +129,5 @@ def run_reference_replace(
             generator=generator,
         ).images[0]
 
+    report_stage("compositing")
     return _composite(image, result, mask_d, edge_blend)

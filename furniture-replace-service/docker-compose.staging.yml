@@ -1,0 +1,31 @@
+services:
+  furniture-replace:
+    image: ${STAGING_INFERENCE_IMAGE:?Set the existing inference image for staging}
+    network_mode: host
+    command: ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000", "--no-access-log"]
+    volumes:
+      - ./app:/srv/app:ro
+      - ./scripts:/srv/scripts:ro
+      - ./tests:/srv/tests:ro
+      - ./frontend:/srv/frontend:ro
+      - ./data:/srv/data
+    environment:
+      DEVICE: cuda
+      DATA_DIR: /srv/data
+      HF_HOME: /srv/data/weights/hf
+      TORCH_HOME: /srv/data/weights/torch
+      XDG_CACHE_HOME: /srv/data/weights/cache
+      QDRANT_URL: http://127.0.0.1:6333
+      GPU_QUEUE_URL: http://127.0.0.1:5556/internal/gpu-queue
+      SERVICE_API_KEY: ${SERVICE_API_KEY:?Set the staging-only service key}
+      MODEL_IDLE_OFFLOAD_SECONDS: 30
+      MAX_LOADED_HEAVY_MODELS: 1
+      PROMPT_CLEAN_FIRST: "false"
+      INPAINT_CROP_PADDING: 0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

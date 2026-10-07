@@ -31,6 +31,10 @@ _GPU_QUEUE_ACQUIRE_TIMEOUT_SECONDS = float(os.getenv("GPU_QUEUE_ACQUIRE_TIMEOUT_
 _GPU_SERVICE_TIMEOUT_SECONDS = _GPU_QUEUE_ACQUIRE_TIMEOUT_SECONDS + 120
 _ASSET_PATH = re.compile(r"/(?:results/(?:masks/)?|catalog-images/)[a-f0-9-]{32,36}(?:_stage1)?\.png\Z")
 _MAX_ASSET_BYTES = 64 * 1024 * 1024
+_KNOWN_STAGES = frozenset({
+    "queued", "waiting_for_gpu", "preparing", "loading", "segmenting", "classifying",
+    "cleaning", "generating", "compositing", "saving", "done", "failed",
+})
 
 
 async def _service(
@@ -131,6 +135,9 @@ async def _refresh(job: dict) -> dict:
     if status not in ("queued", "running", "done", "failed"):
         raise HTTPException(502, "Invalid furniture job status")
     updates = {"status": status}
+    stage = upstream.get("stage")
+    if isinstance(stage, str) and stage in _KNOWN_STAGES:
+        updates["stage"] = stage
     if status == "done":
         result = dict(upstream.get("result") or {})
         field = "mask_url" if job["operation"] == "segment" else "result_url"
@@ -204,9 +211,16 @@ async def job_status(job_id: UUID, current_user: dict = Depends(get_current_user
         upstream = job["service_result"]
         if job["operation"] == "segment":
             result = {"mask": await _asset(upstream["mask_url"]), "bbox": upstream.get("bbox"), "score": upstream.get("score")}
+            for field in ("classification", "mask_review_required"):
+                if field in upstream:
+                    result[field] = upstream[field]
         else:
             result = {"image": await _asset(upstream["result_url"]), "elapsed_seconds": upstream.get("elapsed_seconds"), **job["metadata"]}
-    return {"job_id": job["_id"], "status": job["status"], "result": result, "error": job.get("error")}
+    response = {"job_id": job["_id"], "status": job["status"], "result": result, "error": job.get("error")}
+    stage = job.get("stage")
+    if isinstance(stage, str) and stage in _KNOWN_STAGES:
+        response["stage"] = stage
+    return response
 
 
 async def _product_access(product_id, current_user):

@@ -48,7 +48,7 @@ async def replace(req: ReplaceRequest, request: Request):
         product_image = await asyncio.to_thread(load_rgb, ImageRef(image_url=product["image_url"]))
         ip_scale = req.ip_scale if req.ip_scale is not None else settings.default_ip_scale
         prompt = req.prompt or f"{product.get('name', 'furniture')}, {product.get('category', '')}, realistic furniture, matching the room perspective and lighting"
-        neg = None
+        neg = req.negative_prompt
 
     def task() -> dict:
         t0 = time.time()
@@ -64,7 +64,8 @@ async def replace(req: ReplaceRequest, request: Request):
                 stage1_url = f"/results/{result_id}_stage1.png"
         else:
             final = run_reference_replace(image, mask, product_image, ip_scale, steps, guidance,
-                seed=req.seed, prompt=prompt, mask_growth=req.mask_growth, edge_blend=req.edge_blend)
+                seed=req.seed, prompt=prompt, mask_growth=req.mask_growth, edge_blend=req.edge_blend,
+                negative_prompt=neg)
 
         report_stage("saving")
         save_png(final, settings.results_dir / f"{result_id}.png")

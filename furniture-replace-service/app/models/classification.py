@@ -11,6 +11,22 @@ CLASSIFICATION_LABELS = FURNITURE_CATEGORIES + (
     "other object", "wall", "floor", "ceiling", "window", "door", "room background",
     "person", "plant", "appliance",
 )
+CATEGORY_DESCRIPTIONS = {
+    "chair": "an armchair, upholstered chair with armrests",
+    "sofa": "a sofa or couch",
+    "table": "a table",
+    "bed": "a bed",
+    "cabinet": "a cabinet or cupboard",
+    "shelf": "a bookshelf or shelving unit",
+    "desk": "an office desk",
+    "stool": "a stool",
+    "bench": "a bench",
+    "lamp": "a floor lamp",
+}
+CLASSIFICATION_PROMPTS = tuple(
+    f"a photo of {CATEGORY_DESCRIPTIONS.get(label, 'a ' + label)}"
+    for label in CLASSIFICATION_LABELS
+)
 MIN_COSINE_SIMILARITY = 0.25
 MIN_CATEGORY_MARGIN = 0.04
 RELATIVE_SCORE_TEMPERATURE = 0.07

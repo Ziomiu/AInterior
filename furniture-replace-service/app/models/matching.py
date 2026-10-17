@@ -14,7 +14,7 @@ import torch
 from PIL import Image
 
 from app.config import settings
-from app.models.classification import CLASSIFICATION_LABELS, rank_categories
+from app.models.classification import CLASSIFICATION_PROMPTS, rank_categories
 from app.models.manager import model_manager
 
 logger = logging.getLogger("matching")
@@ -46,7 +46,7 @@ class ClipEmbedder:
         image_features = self.embed_image(image)
         if self._category_text_features is None:
             inputs = self.processor(
-                text=[f"a photo of a {label}" for label in CLASSIFICATION_LABELS],
+                text=list(CLASSIFICATION_PROMPTS),
                 return_tensors="pt", padding=True,
             ).to(self.device)
             features = self.model.get_text_features(**inputs)

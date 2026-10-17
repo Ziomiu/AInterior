@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import WorkflowNode from "./utilities/WorkflowNode";
 import WorkflowPanel from "./WorkflowPanel";
 import { useSearchParams } from "react-router-dom";
+import { API_BASE } from "../../../apiConfig";
 
 export default function Canvas() {
   const [searchParams] = useSearchParams();
@@ -13,8 +14,6 @@ export default function Canvas() {
   const [currentWorkflowId, setCurrentWorkflowId] = useState(null);
 
   const canvasContainerRef = useRef(null);
-
-  const API_BASE = `/api`;
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token") || localStorage.getItem("access_token") || localStorage.getItem("authToken") || localStorage.getItem("jwt");

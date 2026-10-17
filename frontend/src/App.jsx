@@ -33,8 +33,11 @@ import AdminPanel from "./views/adminPanel/AdminPanel";
 import AdminRoute from "./components/AdminRoute";
 import UserDetails from "./views/adminPanel/UserDetails";
 import Error from "./views/error/Error";
+import { configureApiClient } from "./apiConfig";
 
 const Panorama360 = lazy(() => import("./views/workflows/panorama-360/Panorama360"));
+
+configureApiClient(axios);
 
 axios.interceptors.response.use(
   (response) => response,

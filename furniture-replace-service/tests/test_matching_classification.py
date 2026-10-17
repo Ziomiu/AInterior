@@ -66,9 +66,7 @@ class MatchingClassificationTests(unittest.TestCase):
         self.assertEqual(self.model.get_image_features.call_count, 2)
         text_calls = [call for call in self.processor.call_args_list if "text" in call.kwargs]
         self.assertEqual(len(text_calls), 1)
-        self.assertEqual(text_calls[0].kwargs["text"], [
-            f"a photo of a {label}" for label in self.categories.CLASSIFICATION_LABELS
-        ])
+        self.assertEqual(text_calls[0].kwargs["text"], list(self.categories.CLASSIFICATION_PROMPTS))
         np.testing.assert_allclose(self.embedder._category_text_features, np.eye(len(self.categories.CLASSIFICATION_LABELS)))
 
     def test_catchall_uses_unknown_contract(self):

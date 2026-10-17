@@ -94,6 +94,25 @@ class ApiTests(unittest.TestCase):
             self.assertIsNone(result["stage1_url"])
             save.assert_called_once()
 
+    def test_reference_mode_preserves_negative_prompt(self):
+        import app.api.replace as route
+        submitted = Mock(return_value=SimpleNamespace(id="test-job", status="queued"))
+        product = {"name": "Reference armchair", "category": "chair", "image_url": "/catalog-images/reference.png"}
+        with patch.object(route, "load_rgb"), patch.object(route, "load_mask"), \
+             patch.object(route, "mask_to_bbox", return_value=(0, 0, 32, 24)), \
+             patch.object(route.catalog_store, "get", return_value=product), \
+             patch.object(route.job_queue, "submit", submitted), \
+             patch.object(route, "run_reference_replace") as replace, patch.object(route, "save_png"):
+            response = self.client.post("/v1/replace", json={
+                "image": {"image_base64": "YWJj"}, "mask": {"image_base64": "YWJj"},
+                "mode": "reference", "product_id": "e2bf87a4-6378-55ef-b396-a82e244f7289",
+                "negative_prompt": "floating furniture, missing legs, bad perspective",
+            })
+            self.assertEqual(response.status_code, 200)
+            submitted.call_args.args[0]()
+            self.assertEqual(replace.call_args.kwargs["negative_prompt"],
+                             "floating furniture, missing legs, bad perspective")
+
     def test_empty_mask_is_rejected_before_queuing(self):
         import app.api.replace as route
         with patch.object(route, "load_rgb"), patch.object(route, "load_mask"), \

@@ -101,6 +101,7 @@ def run_reference_replace(
     prompt: str | None = None,
     mask_growth: int = 6,
     edge_blend: int = 2,
+    negative_prompt: str | None = None,
 ) -> Image.Image:
     """SD1.5-inpainting + IP-Adapter conditioned on the catalog product photo."""
     mask_d = dilate_mask(mask, iterations=mask_growth)
@@ -116,7 +117,7 @@ def run_reference_replace(
         report_stage("generating")
         result = pipe(
             prompt=prompt or "a piece of furniture, realistic, well lit, matching the room",
-            negative_prompt="blurry, distorted, low quality, deformed",
+            negative_prompt=negative_prompt if negative_prompt is not None else "blurry, distorted, low quality, deformed",
             image=init,
             mask_image=mask_work,
             width=ww,

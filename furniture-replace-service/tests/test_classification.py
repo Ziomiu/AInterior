@@ -33,6 +33,13 @@ class ClassificationTests(unittest.TestCase):
                 self.assertGreater(result["confidence"], 0.9)
                 self.assertEqual(result["confidence_kind"], "relative_clip_score")
 
+    def test_prompts_describe_catalog_categories_without_changing_label_order(self):
+        self.assertEqual(set(classification.CATEGORY_DESCRIPTIONS), set(classification.FURNITURE_CATEGORIES))
+        self.assertEqual(len(classification.CLASSIFICATION_PROMPTS), len(classification.CLASSIFICATION_LABELS))
+        self.assertIn("armchair", classification.CLASSIFICATION_PROMPTS[0])
+        self.assertIn("floor lamp", classification.CLASSIFICATION_PROMPTS[9])
+        self.assertEqual(classification.CLASSIFICATION_PROMPTS[11], "a photo of a wall")
+
     def test_low_similarity_is_unknown_despite_clear_margin(self):
         result = classification.rank_categories(self.scores("chair", peak=0.24, baseline=-0.2))
         self.assertEqual(result["category"], "unknown")

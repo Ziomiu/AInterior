@@ -120,6 +120,15 @@ class FurnitureTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()["products"]), 1)
 
+    def test_catalog_returns_all_fifty_shared_products(self):
+        self.products.find_one.return_value = {"shared": True, "status": "ready"}
+        rows = [{"product_id": str(uuid4()), "image_url": f"/catalog-images/{uuid4().hex}.png"} for _ in range(50)]
+        with patch.object(furniture, "_service", AsyncMock(return_value={"products": rows})), \
+             patch.object(furniture, "_asset", AsyncMock(return_value="image")):
+            response = self.client.get("/furniture/products")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["products"]), 50)
+
     def test_ingest_rejects_mismatched_service_identifier(self):
         with patch.object(furniture, "_service", AsyncMock(return_value={"product_id": str(uuid4())})):
             response = self.client.post("/furniture/products", json={

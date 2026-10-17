@@ -313,11 +313,13 @@ export default function FurnitureReplace() {
               className={`text-left border rounded-md overflow-hidden transition-colors hover:border-accent focus-visible:outline-accent ${selected?.product_id === product.product_id ? "border-accent ring-1 ring-accent bg-accent/5" : "border-foreground/10"}`}>
               <div className="relative aspect-square bg-white/50"><img src={`data:image/png;base64,${product.image}`} alt={product.name} className="w-full h-full object-contain p-2" />{selected?.product_id === product.product_id && <span className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-accent text-white"><LuCheck /></span>}</div>
               <span className="block px-3 pt-2 pb-1 text-sm font-medium break-words">{product.name}</span>
+              {Number.isFinite(product.price) && <span className="block px-3 pb-1 text-sm tabular-nums">{new Intl.NumberFormat("en-IE", { style: "currency", currency: product.currency || "EUR" }).format(product.price)}</span>}
               <span className="block px-3 pb-3 text-xs text-muted capitalize break-words">{product.category || "Furniture"}</span>
             </button>)}
           </div>
           {!visibleProducts.length && <div className="py-6 text-center space-y-3"><p className="text-sm text-muted">{products.length ? "No matching products" : "No catalog products"}</p>{categoryFilter !== "all" && <button type="button" className="text-sm underline underline-offset-4" onClick={() => setCategoryFilter("all")}>All categories</button>}</div>}
           {selected && <div className="flex items-center gap-3 border-t border-foreground/10 pt-3 text-sm"><LuCheck className="text-accent shrink-0" /><span className="min-w-0 break-words flex-1">{selected.name}</span>{iconButton("Clear product", <LuX />, () => setSelected(null))}</div>}
+          {selected?.source_url?.startsWith("https://www.ikea.com/") && <a href={selected.source_url} target="_blank" rel="noopener noreferrer" className="block text-sm underline underline-offset-4">IKEA product details</a>}
         </>}
         <Button className="w-full !tracking-normal !text-sm !normal-case" variant="accent" icon={<LuSparkles />} onClick={generate} disabled={busy || !canGenerate}>Replace</Button>
         {mode === "reference" && <details className="border-y border-foreground/15 py-3"><summary className="cursor-pointer text-sm">Add reference</summary><div className="space-y-3 pt-3">

@@ -102,7 +102,7 @@ class SegmentContractTests(unittest.TestCase):
             result = self.execute()
         self.assertEqual(result["classification"], self.categories.unknown_classification())
         self.assertEqual(result["score"], 0.93)
-        self.assertFalse(result["mask_review_required"])
+        self.assertTrue(result["mask_review_required"])
         self.save.assert_called_once()
 
     def test_clip_loading_failure_does_not_fail_segmentation(self):
@@ -132,6 +132,12 @@ class SegmentContractTests(unittest.TestCase):
     def test_clear_mask_at_review_threshold_can_be_ready(self):
         self.segmenter.score = 0.85
         self.assertFalse(self.execute()["mask_review_required"])
+
+    def test_uncertain_category_requires_review_despite_high_sam_score(self):
+        self.clip.classify.return_value = self.categories.unknown_classification(0.13)
+        result = self.execute()
+        self.assertEqual(result["score"], 0.93)
+        self.assertTrue(result["mask_review_required"])
 
     def test_tiny_mask_requires_review_despite_click_agreement(self):
         mask = np.zeros((100, 100), dtype=np.uint8)

@@ -1,0 +1,5 @@
+services:
+  furniture-replace:
+    environment:
+      GPU_QUEUE_URL: http://127.0.0.1:5557/internal/gpu-queue
+      IP_ADAPTER_WEIGHT: ${STAGING_IP_ADAPTER_WEIGHT:-ip-adapter-plus_sd15.bin}

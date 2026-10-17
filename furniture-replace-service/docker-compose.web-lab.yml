@@ -1,0 +1,15 @@
+services:
+  furniture-web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.staging
+      args:
+        STAGING_FRONTEND_IMAGE: ${STAGING_FRONTEND_IMAGE:-praca-inzynierska-frontend:latest}
+    image: ainterior-replacement-lab-web:latest
+    network_mode: host
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5175/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

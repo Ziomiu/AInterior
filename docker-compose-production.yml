@@ -36,6 +36,7 @@ services:
       - output_images:/backend/output_images
     environment:
       ENV_FILE: .env
+      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
       FURNITURE_SERVICE_URL: ${FURNITURE_SERVICE_URL:-http://furniture-replace:8000}
       FURNITURE_SERVICE_KEY: ${FURNITURE_SERVICE_KEY:-}
     working_dir: /backend

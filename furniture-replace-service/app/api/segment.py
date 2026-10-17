@@ -60,6 +60,7 @@ async def segment(req: SegmentRequest, request: Request):
                     classification = clip.classify_object(crop_object_on_white(image, mask_img))
             except Exception:
                 logger.exception("Object classification failed; retaining the SAM mask")
+        mask_review_required = mask_review_required or classification.get("uncertain", True)
         bbox = bbox or (0, 0, image.width, image.height)
 
         mask_id = uuid.uuid4().hex

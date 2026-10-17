@@ -1,0 +1,4 @@
+services:
+  furniture-replace:
+    environment:
+      GPU_QUEUE_URL: http://127.0.0.1:5557/internal/gpu-queue

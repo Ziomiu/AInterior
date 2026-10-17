@@ -223,18 +223,27 @@ async def job_status(job_id: UUID, current_user: dict = Depends(get_current_user
     return response
 
 
-async def _product_access(product_id, current_user):
-    product = await products_collection.find_one({"_id": str(UUID(str(product_id)))})
+def _can_access_product(product, current_user):
     return product is not None and product.get("status", "ready") == "ready" and (
         product.get("shared") is True or product.get("user_id") == current_user["_id"]
     )
 
 
+async def _product_access(product_id, current_user):
+    product = await products_collection.find_one({"_id": str(UUID(str(product_id)))})
+    return _can_access_product(product, current_user)
+
+
 async def _products(rows, current_user, limit=20):
     visible = []
     for product in rows:
-        if await _product_access(product["product_id"], current_user):
+        record = await products_collection.find_one({"_id": str(UUID(product["product_id"]))})
+        if _can_access_product(record, current_user):
+            metadata = {field: record[field] for field in (
+                "description", "brand", "source_url", "article_number", "fetched_at", "color", "material",
+            ) if field in record}
             visible.append({**{key: value for key, value in product.items() if key != "image_url"},
+                            **metadata,
                             "image": await _asset(product["image_url"])})
             if len(visible) >= limit:
                 break
@@ -255,7 +264,7 @@ async def _visible_product_ids(current_user):
 @furniture_router.get("/products")
 async def products(current_user: dict = Depends(get_current_user)):
     data = await _service("GET", "/v1/catalog/products", params={"limit": 200})
-    return {"products": await _products(data["products"], current_user)}
+    return {"products": await _products(data["products"], current_user, limit=200)}
 
 
 @furniture_router.post("/products")

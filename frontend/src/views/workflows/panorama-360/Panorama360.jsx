@@ -1,11 +1,13 @@
 import { useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import { LuDownload, LuLoaderCircle } from "react-icons/lu";
 
 import { toaster } from "../../../components/ui/toaster";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import PanoramaViewer from "./PanoramaViewer";
+import { downloadPanorama } from "./panoramaExport";
 
 const DEFAULT_BRIEF = "A multifunctional exhibition space with a clear circulation loop, flexible display zones, adjustable glare-free lighting, high-contrast wayfinding, quiet sensory retreat, tactile materials, step-free access, generous turning space, and seating with varied visual and acoustic comfort";
 const PANORAMA_INSTRUCTIONS = "seamless equirectangular 360-degree architectural panorama, 2:1 horizontal composition, continuous horizon, coherent connected exhibition interior, immersive environment visualization, no frame, no labels, no text";
@@ -16,6 +18,25 @@ export default function Panorama360() {
   const [image, setImage] = useState("");
   const [loading, setLoading] = useState(false);
   const [flatView, setFlatView] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState("jpeg");
+  const [exporting, setExporting] = useState(false);
+
+  const download = async () => {
+    setExporting(true);
+    try {
+      await downloadPanorama(image, downloadFormat);
+    } catch (error) {
+      toaster.create({
+        title: "Panorama download failed",
+        description: error.message || "Could not export the panorama.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const generate = async () => {
     const token = localStorage.getItem("token");
@@ -81,7 +102,7 @@ export default function Panorama360() {
           <Button
             variant="accent"
             onClick={generate}
-            disabled={loading || !brief.trim()}
+            disabled={loading || exporting || !brief.trim()}
             className="mt-auto w-full normal-case tracking-normal"
           >
             {loading ? "Generating panorama..." : "Generate 360 image"}
@@ -90,7 +111,7 @@ export default function Panorama360() {
         </section>
 
         <section className="flex min-h-[320px] flex-col gap-3" aria-label="Panorama preview">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-semibold">Preview</h2>
             {image && (
               <div className="flex gap-2" role="group" aria-label="Preview mode">
@@ -112,6 +133,31 @@ export default function Panorama360() {
               <div className="absolute inset-0 grid place-items-center text-white/70">Your panorama will appear here</div>
             )}
           </div>
+          {image && (
+            <div className="flex items-center justify-end gap-2" role="group" aria-label="Panorama download">
+              <select
+                aria-label="Download format"
+                value={downloadFormat}
+                onChange={event => setDownloadFormat(event.target.value)}
+                disabled={loading || exporting}
+                className="min-w-0 max-w-full rounded border border-foreground/20 bg-background px-2 py-2 text-sm disabled:opacity-50"
+              >
+                <option value="jpeg">JPEG (360 metadata)</option>
+                <option value="png">PNG (lossless)</option>
+              </select>
+              <button
+                type="button"
+                onClick={download}
+                disabled={loading || exporting}
+                aria-label="Download panorama"
+                aria-busy={exporting}
+                title={exporting ? "Exporting panorama" : "Download panorama"}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded border border-foreground/20 hover:bg-foreground/5 disabled:opacity-50"
+              >
+                {exporting ? <LuLoaderCircle className="animate-spin" aria-hidden="true" /> : <LuDownload aria-hidden="true" />}
+              </button>
+            </div>
+          )}
         </section>
       </Card>
     </div>

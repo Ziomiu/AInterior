@@ -1,0 +1,38 @@
+name: ainterior-public-lab
+services:
+  comfyui:
+    image: praca-inzynierska-comfyui:latest
+    entrypoint: ["python", "/comfyui/main.py"]
+    command: ["--listen", "127.0.0.1", "--port", "8190", "--lowvram", "--cpu-vae", "--reserve-vram", "7", "--disable-auto-launch", "--disable-all-custom-nodes", "--whitelist-custom-nodes", "ainterior_panorama", "--extra-model-paths-config", "/lab-extra-model-paths.yaml"]
+    network_mode: host
+    gpus: all
+    volumes:
+      - ../models/checkpoints:/comfyui/models/checkpoints:ro
+      - ../models/upscale_models:/comfyui/models/upscale_models:ro
+      - ../comfyui/custom_nodes/ainterior_panorama:/comfyui/custom_nodes/ainterior_panorama:ro
+      - /home/magisterka/AInterior/models/checkpoints:/baseline-checkpoints:ro
+      - ./comfy-extra-model-paths.yaml:/lab-extra-model-paths.yaml:ro
+      - ../output_images:/comfyui/output
+      - ../input_images:/comfyui/input
+  backend:
+    image: praca-inzynierska-backend:latest
+    entrypoint: ["python", "run_replacement_lab.py"]
+    command: ["--mongo-env", "/run/mongo-config.env", "--port", "5558"]
+    working_dir: /backend
+    network_mode: host
+    environment:
+      ENV_FILE: /dev/null
+      COMFYUI_URL: http://127.0.0.1:8190
+      CORS_ORIGINS: http://127.0.0.1:5176
+    volumes:
+      - ../backend:/backend:ro
+      - /home/magisterka/AInterior/backend/.env:/run/mongo-config.env:ro
+      - ../private-data:/furniture-replace-service/data
+      - ../output_images:/backend/output_images:ro
+      - ../input_images:/backend/input_images
+  frontend:
+    image: praca-inzynierska-frontend:latest
+    network_mode: host
+    volumes:
+      - ../frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx.lab.conf:/etc/nginx/conf.d/default.conf:ro

@@ -16,8 +16,9 @@ from huggingface_hub import login
 
 from utils.auth_helpers import get_current_user
 from utils import gpu_queue
+from utils.panorama import PANORAMA_MODELS, PANORAMA_UPSCALER, available_panorama_models, build_panorama_workflow
 from utils.saving_images_helpers import image_to_string, string_to_image, save_image_record
-from schemas.generation import TextToImageRequest, Img2ImgRequest, ControlNetRequest, Inpainting, Outpainting
+from schemas.generation import PanoramaRequest, TextToImageRequest, Img2ImgRequest, ControlNetRequest, Inpainting, Outpainting
 
 models= APIRouter()
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ class ComfyUIExecutionUncertain(Exception):
     pass
 
 
-async def _get_comfyui_image(prompt_json):
+async def _get_comfyui_image(prompt_json, generation_timeout=None):
     queue_payload = {'prompt': prompt_json}
 
     async with httpx.AsyncClient(
@@ -98,7 +99,7 @@ async def _get_comfyui_image(prompt_json):
 
         prompt_id = queue_response_json['prompt_id']
         loop = asyncio.get_running_loop()
-        deadline = loop.time() + COMFYUI_GENERATION_TIMEOUT_SECONDS
+        deadline = loop.time() + (generation_timeout or COMFYUI_GENERATION_TIMEOUT_SECONDS)
 
         image_response_json = None
         while loop.time() < deadline:
@@ -153,7 +154,7 @@ async def _get_comfyui_image(prompt_json):
 _background_generations: set[asyncio.Task] = set()
 
 
-async def _generate_with_gpu_slot(prompt_json, user_id: str, operation: str):
+async def _generate_with_gpu_slot(prompt_json, user_id: str, operation: str, generation_timeout=None):
     try:
         ticket_id = await gpu_queue.enqueue(user_id, f"comfyui:{operation}")
     except gpu_queue.QueueFullError as error:
@@ -174,7 +175,10 @@ async def _generate_with_gpu_slot(prompt_json, user_id: str, operation: str):
 
     heartbeat_task = asyncio.create_task(_gpu_heartbeat(ticket_id, claim_id))
     try:
-        image = await _get_comfyui_image(prompt_json)
+        if generation_timeout is None:
+            image = await _get_comfyui_image(prompt_json)
+        else:
+            image = await _get_comfyui_image(prompt_json, generation_timeout=generation_timeout)
     except ComfyUIExecutionUncertain as error:
         try:
             await gpu_queue.mark_stalled(ticket_id, claim_id, str(error))
@@ -216,17 +220,97 @@ async def _abandon_gpu_ticket(ticket_id: str, claim_id: str, reason: str):
         logger.exception("Could not safely clean up GPU ticket %s", ticket_id)
 
 
-async def get_image(prompt_json, user_id=None, operation="generation"):
+async def get_image(prompt_json, user_id=None, operation="generation", generation_timeout=None):
     if user_id is None:
         try:
-            return await _get_comfyui_image(prompt_json)
+            if generation_timeout is None:
+                return await _get_comfyui_image(prompt_json)
+            return await _get_comfyui_image(prompt_json, generation_timeout=generation_timeout)
         except ComfyUIExecutionUncertain as error:
             raise HTTPException(status_code=504, detail=str(error)) from error
 
-    task = asyncio.create_task(_generate_with_gpu_slot(prompt_json, str(user_id), operation))
+    task = asyncio.create_task(_generate_with_gpu_slot(
+        prompt_json, str(user_id), operation, generation_timeout=generation_timeout
+    ))
     _background_generations.add(task)
     task.add_done_callback(_background_generations.discard)
     return await asyncio.shield(task)
+
+async def _panorama_inventory():
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{COMFYUI_URL}/object_info/CheckpointLoaderSimple")
+            response.raise_for_status()
+            checkpoints = response.json()["CheckpointLoaderSimple"]["input"]["required"]["ckpt_name"][0]
+            if not isinstance(checkpoints, list) or not all(isinstance(name, str) for name in checkpoints):
+                raise ValueError("Invalid checkpoint inventory")
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError) as error:
+        raise HTTPException(status_code=503, detail="Panorama model inventory is unavailable") from error
+    return available_panorama_models(checkpoints)
+
+
+async def _panorama_high_available():
+    required_nodes = {
+        "AInteriorPanoramaSeam", "AInteriorPanoramaWrap", "AInteriorPanoramaUnpad",
+        "VAEEncodeForInpaint", "ImageUpscaleWithModel", "UpscaleModelLoader", "ImageScale",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{COMFYUI_URL}/object_info")
+            response.raise_for_status()
+            nodes = response.json()
+        if not required_nodes.issubset(nodes):
+            return False
+        model_input = nodes["UpscaleModelLoader"]["input"]["required"]["model_name"]
+        options = model_input[0] if isinstance(model_input[0], list) else model_input[1]["options"]
+        return PANORAMA_UPSCALER in options
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError):
+        return False
+
+
+@models.get('/panorama/models')
+async def panorama_models(current_user: dict = Depends(get_current_user)):
+    inventory = await _panorama_inventory()
+    qualities = ["draft", "high"] if await _panorama_high_available() else ["draft"]
+    return {"models": inventory, "qualities": qualities}
+
+
+@models.post('/generate/panorama')
+async def generate_panorama(request: PanoramaRequest, current_user: dict = Depends(get_current_user)):
+    if request.model_id not in PANORAMA_MODELS:
+        raise HTTPException(status_code=422, detail="Unknown panorama model")
+    inventory = await _panorama_inventory()
+    if request.model_id not in {profile["id"] for profile in inventory}:
+        raise HTTPException(status_code=503, detail="The selected panorama checkpoint is not installed")
+    if request.quality == "high" and not await _panorama_high_available():
+        raise HTTPException(status_code=503, detail="High / 4K panorama processing is not installed on the server")
+    with open(os.path.join('workflows_api', 'txt2img.json')) as workflow_file:
+        workflow = build_panorama_workflow(
+            json.load(workflow_file), request.model_id, request.brief, request.negative_prompt,
+            request.seed, request.quality,
+        )
+    if request.quality == "high":
+        image = await get_image(workflow, current_user["_id"], "panorama", generation_timeout=900.0)
+    else:
+        image = await get_image(workflow, current_user["_id"], "panorama")
+    await save_image_record(
+        user_id=str(current_user["_id"]), image_base64=image,
+        metadata={
+            "model": request.model_id, "mode": "panorama", "prompt": request.brief,
+            "negative_prompt": request.negative_prompt, "seed": request.seed,
+            "width": 4096 if request.quality == "high" else workflow["5"]["inputs"]["width"],
+            "height": 2048 if request.quality == "high" else workflow["5"]["inputs"]["height"], "steps": 32,
+            "quality": request.quality,
+            "base_width": workflow["5"]["inputs"]["width"],
+            "base_height": workflow["5"]["inputs"]["height"],
+            "upscaler": PANORAMA_UPSCALER if request.quality == "high" else None,
+            "seam_repair": request.quality == "high",
+            "guidance_scale": PANORAMA_MODELS[request.model_id]["guidance_scale"],
+            "sampler": "dpmpp_2m", "scheduler": "karras",
+        },
+    )
+    return {"image": image}
+
 
 @models.post('/generate/text-to-image')
 async def text_to_image(textToImageRequest: TextToImageRequest, current_user: dict = Depends(get_current_user)):

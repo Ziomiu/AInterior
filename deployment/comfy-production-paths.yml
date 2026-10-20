@@ -1,0 +1,4 @@
+ainterior_panorama_release:
+  base_path: /ainterior-panorama-models
+  checkpoints: checkpoints
+  upscale_models: upscale_models

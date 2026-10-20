@@ -1,0 +1,16 @@
+[Unit]
+Description=AInterior HTTPS tunnel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/ngrok start ainterior --config=%h/.config/ainterior-ngrok/ngrok.yml
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

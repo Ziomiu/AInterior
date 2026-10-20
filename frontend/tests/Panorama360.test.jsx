@@ -17,6 +17,10 @@ vi.mock("../src/views/workflows/panorama-360/PanoramaViewer", () => ({
 
 beforeEach(() => {
   vi.spyOn(localStorage, "getItem").mockImplementation(key => key === "token" ? "example-token" : null);
+  axios.get.mockResolvedValue({ data: { models: [
+    { id: "realvisxl-v4", label: "RealVisXL V4 - realistic interiors", width: 1536, height: 768 },
+    { id: "sdxl-base", label: "SDXL Base - general purpose", width: 1536, height: 768 },
+  ], qualities: ["draft", "high"] } });
 });
 
 afterEach(() => {
@@ -28,29 +32,91 @@ afterEach(() => {
 async function renderGeneratedPanorama() {
   axios.post.mockResolvedValueOnce({ data: { image: "panorama-data" } });
   render(<MemoryRouter><Panorama360 /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeEnabled());
   fireEvent.click(screen.getByRole("button", { name: "Generate 360 image" }));
   await screen.findByRole("img", { name: "Interactive 360-degree panorama" });
 }
 
 describe("Panorama360", () => {
-  it("submits a bounded 2:1 prompt and displays the interactive result", async () => {
+  it("submits the selected profile and repeatable seed and displays the interactive result", async () => {
     vi.spyOn(localStorage, "getItem").mockImplementation((key) => key === "token" ? "example-token" : null);
     axios.post.mockResolvedValueOnce({ data: { image: "panorama-data" } });
     render(<MemoryRouter><Panorama360 /></MemoryRouter>);
-
+    await waitFor(() => expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeEnabled());
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Seed" }), { target: { value: "42" } });
     await fireEvent.click(screen.getByRole("button", { name: "Generate 360 image" }));
 
     expect(axios.post).toHaveBeenCalledWith(
-      "/api/model/generate/text-to-image",
+      "/api/model/generate/panorama",
       expect.objectContaining({
-        model_version: "xl",
-        width: 1024,
-        height: 512,
-        prompt: expect.stringContaining("seamless equirectangular 360-degree architectural panorama"),
+        model_id: "realvisxl-v4",
+        seed: 42,
+        quality: "draft",
+        brief: expect.stringContaining("exhibition space"),
       }),
       { headers: { Authorization: "Bearer example-token" } }
     );
     expect(await screen.findByRole("img", { name: "Interactive 360-degree panorama" })).toBeInTheDocument();
+  });
+
+  it("uses the selected installed model", async () => {
+    axios.post.mockResolvedValueOnce({ data: { image: "panorama-data" } });
+    render(<MemoryRouter><Panorama360 /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Model" })).toHaveValue("realvisxl-v4"));
+    fireEvent.change(screen.getByRole("combobox", { name: "Model" }), { target: { value: "sdxl-base" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate 360 image" }));
+    await screen.findByRole("img", { name: "Interactive 360-degree panorama" });
+    expect(axios.post.mock.calls[0][1].model_id).toBe("sdxl-base");
+  });
+
+  it("submits High quality and preserves the generated result dimensions when controls change", async () => {
+    axios.post.mockResolvedValueOnce({ data: { image: "panorama-data" } });
+    render(<MemoryRouter><Panorama360 /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("radio", { name: "High / 4K" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate 360 image" }));
+    await screen.findByRole("img", { name: "Interactive 360-degree panorama" });
+    expect(axios.post.mock.calls[0][1].quality).toBe("high");
+    expect(screen.getByRole("heading", { name: "Preview - 4096 x 2048" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Draft" }));
+    expect(screen.getByRole("heading", { name: "Preview - 4096 x 2048" })).toBeInTheDocument();
+  });
+
+  it("disables High when server processing is unavailable", async () => {
+    axios.get.mockResolvedValueOnce({ data: { models: [{ id: "sdxl-base", label: "SDXL Base" }], qualities: ["draft"] } });
+    render(<MemoryRouter><Panorama360 /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeEnabled());
+    expect(screen.getByRole("radio", { name: "High / 4K" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Draft" })).toBeChecked();
+  });
+
+  it("blocks generation until the inventory is loaded", async () => {
+    let complete;
+    axios.get.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+    render(<MemoryRouter><Panorama360 /></MemoryRouter>);
+    expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeDisabled();
+    await act(async () => { complete({ data: { models: [] } }); });
+    expect(screen.getByRole("alert")).toHaveTextContent("No panorama models are installed");
+    expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeDisabled();
+  });
+
+  it("allows retrying a failed model inventory request", async () => {
+    axios.get.mockRejectedValueOnce(new Error("unavailable"));
+    render(<MemoryRouter><Panorama360 /></MemoryRouter>);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load panorama models");
+    fireEvent.click(screen.getByRole("button", { name: "Reload models" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeEnabled());
+  });
+
+  it("rejects blank briefs and invalid seeds", async () => {
+    render(<MemoryRouter><Panorama360 /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeEnabled());
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Seed" }), { target: { value: "-1" } });
+    expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeDisabled();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Seed" }), { target: { value: "42" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Exhibition space brief" }), { target: { value: "  " } });
+    expect(screen.getByRole("button", { name: "Generate 360 image" })).toBeDisabled();
+    expect(axios.post).not.toHaveBeenCalled();
   });
 
   it("does not offer downloads before a panorama exists", () => {
